@@ -1,0 +1,6 @@
+Sr No,Module,Test Case ID,Test Type,Test Scenario,Simplified Test Scenario,Test Steps,Expected Result,Actual Result,Priority,Severity,Status,Tested By,Execution Date,Defect No. / Bug No.,Defect ID,QA Comments
+1,Authentication,TC001,Functional,Verify Login with Valid Credentials,Login with Valid Credentials,Enter username and password,Login should succeed,Login succeeded,HIGH,CRITICAL,PASS,John Doe,2026-06-05,,,Looks good
+2,Profile,TC002,Functional,Verify profile edit,Profile edit,Change profile picture,Picture updated,Picture not updated,MEDIUM,HIGH,FAIL,John Doe,2026-06-05,BUG-101,BUG-101,Fails to upload
+3,Settings,TC003,Functional,Verify notifications toggle,Notifications toggle,Toggle off,Notifications disabled,Notifications still enabled,LOW,MEDIUM,BLOCKED,John Doe,2026-06-05,BUG-102,BUG-102,Cannot change settings
+4,Logout,TC004,Functional,Verify logout,Logout,Click logout,User logged out,User logged out,LOW,LOW,PASS,John Doe,2026-06-05,,,Done
+5,Security,TC005,Security,Verify session timeout,Session timeout,Wait for timeout,Session terminated,Session terminated,HIGH,CRITICAL,NOT EXECUTED,John Doe,2026-06-05,,,To be done
