@@ -177,17 +177,24 @@ function EditablePriority({ row, data, onUpdateRow }) {
   );
 }
 
-export default function FilePreview({ data, fileName, onUpdateRow, onMergeFile }) {
+export default function FilePreview({ data, fileName, onUpdateRow, onUpdateRowsBulk, onMergeFile }) {
   const [search, setSearch] = useState('');
+  const [pageSize, setPageSize] = useState(PAGE_SIZE);
   const [page, setPage] = useState(1);
   const [sortCol, setSortCol] = useState('');
   const [sortDir, setSortDir] = useState('asc');
   const [statusFilter, setStatusFilter] = useState('');
+  const [selectedIdxs, setSelectedIdxs] = useState([]);
 
-  const previewCols = useMemo(() => {
-    const colsToHide = ['Test Type', 'Test Case ID', 'Test Steps', 'Priority', 'Severity'];
-    return REQUIRED_COLUMNS.filter(col => !colsToHide.includes(col));
-  }, []);
+  const DEFAULT_HIDDEN = useMemo(() => ['Test Type', 'Test Case ID', 'Test Steps', 'Priority', 'Severity'], []);
+  const [visibleCols, setVisibleCols] = useState(() => {
+    return REQUIRED_COLUMNS.filter(col => !DEFAULT_HIDDEN.includes(col));
+  });
+  const [showColSelector, setShowColSelector] = useState(false);
+
+  useEffect(() => {
+    setSelectedIdxs([]);
+  }, [search, statusFilter, page, pageSize, data]);
 
   const filtered = useMemo(() => {
     let rows = data;
@@ -205,8 +212,21 @@ export default function FilePreview({ data, fileName, onUpdateRow, onMergeFile }
     return rows;
   }, [data, search, statusFilter, sortCol, sortDir]);
 
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
-  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const allFilteredSelected = filtered.length > 0 && filtered.every(row => selectedIdxs.includes(data.indexOf(row)));
+  const someFilteredSelected = filtered.length > 0 && filtered.some(row => selectedIdxs.includes(data.indexOf(row))) && !allFilteredSelected;
+
+  const handleSelectAll = () => {
+    if (allFilteredSelected) {
+      const filteredGlobalIdxs = filtered.map(row => data.indexOf(row));
+      setSelectedIdxs(selectedIdxs.filter(idx => !filteredGlobalIdxs.includes(idx)));
+    } else {
+      const filteredGlobalIdxs = filtered.map(row => data.indexOf(row));
+      setSelectedIdxs([...new Set([...selectedIdxs, ...filteredGlobalIdxs])]);
+    }
+  };
+
+  const totalPages = pageSize === 'all' ? 1 : Math.ceil(filtered.length / pageSize);
+  const paginated = pageSize === 'all' ? filtered : filtered.slice((page - 1) * pageSize, page * pageSize);
 
   const handleSort = (col) => {
     if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
@@ -238,77 +258,216 @@ export default function FilePreview({ data, fileName, onUpdateRow, onMergeFile }
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap',
       }}>
         <div>
-          <h3 style={{ fontFamily: 'Syne, sans-serif', fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>
-            Preview & Edit
-          </h3>
-          <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-            {fileName} · {filtered.length} of {data.length} rows
-          </p>
+          {selectedIdxs.length > 0 ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div>
+                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent-cyan)', display: 'block' }}>
+                  ⚡ {selectedIdxs.length} row{selectedIdxs.length > 1 ? 's' : ''} selected
+                </span>
+                <button
+                  onClick={() => setSelectedIdxs([])}
+                  style={{
+                    background: 'transparent', border: 'none', color: 'var(--text-muted)',
+                    fontSize: 11, cursor: 'pointer', textDecoration: 'underline', padding: 0,
+                    marginTop: 2, display: 'block', textAlign: 'left',
+                  }}
+                >
+                  Clear Selection
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <h3 style={{ fontFamily: 'Syne, sans-serif', fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>
+                Preview & Edit
+              </h3>
+              <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                {fileName} · {filtered.length} of {data.length} rows
+              </p>
+            </div>
+          )}
         </div>
 
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          {/* Upload New to Merge */}
-          <button
-            onClick={() => document.getElementById('merge-file-input').click()}
-            style={{
-              background: 'var(--bg-secondary)', border: '1px solid var(--border)',
-              borderRadius: 8, color: 'var(--accent-cyan)', fontSize: 12,
-              padding: '7px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
-              transition: 'all 0.2s', fontWeight: 600,
-            }}
-            onMouseOver={(e) => e.currentTarget.style.borderColor = 'var(--accent-cyan)'}
-            onMouseOut={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
-          >
-            🔗 Merge New Sheet
-          </button>
-          <input
-            id="merge-file-input"
-            type="file"
-            accept=".xlsx,.xls,.csv"
-            onChange={handleMergeUpload}
-            style={{ display: 'none' }}
-          />
+          {selectedIdxs.length > 0 ? (
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600 }}>Bulk Status:</span>
+              <select
+                value=""
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (!val) return;
+                  const updates = selectedIdxs.map(idx => ({
+                    index: idx,
+                    updatedRow: { ...data[idx], Status: val }
+                  }));
+                  onUpdateRowsBulk?.(updates);
+                  setSelectedIdxs([]);
+                }}
+                style={{
+                  background: 'var(--bg-secondary)', border: '1px solid var(--accent-cyan)',
+                  borderRadius: 8, color: 'var(--text-primary)', fontSize: 12,
+                  padding: '7px 12px', outline: 'none', cursor: 'pointer',
+                  fontWeight: 600
+                }}
+              >
+                <option value="" disabled>Apply status to selected...</option>
+                <option value="PASS">PASS</option>
+                <option value="FAIL">FAIL</option>
+                <option value="BLOCKED">BLOCKED</option>
+                <option value="NOT EXECUTED">NOT EXECUTED</option>
+              </select>
+            </div>
+          ) : (
+            <>
+              {/* Upload New to Merge */}
+              <button
+                onClick={() => document.getElementById('merge-file-input').click()}
+                style={{
+                  background: 'var(--bg-secondary)', border: '1px solid var(--border)',
+                  borderRadius: 8, color: 'var(--accent-cyan)', fontSize: 12,
+                  padding: '7px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+                  transition: 'all 0.2s', fontWeight: 600,
+                }}
+                onMouseOver={(e) => e.currentTarget.style.borderColor = 'var(--accent-cyan)'}
+                onMouseOut={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
+              >
+                🔗 Merge New Sheet
+              </button>
+              <input
+                id="merge-file-input"
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                onChange={handleMergeUpload}
+                style={{ display: 'none' }}
+              />
 
-          {/* Status filter */}
-          <select
-            value={statusFilter}
-            onChange={handleStatusFilter}
-            style={{
-              background: 'var(--bg-secondary)', border: '1px solid var(--border)',
-              borderRadius: 8, color: 'var(--text-secondary)', fontSize: 12,
-              padding: '7px 12px', outline: 'none', cursor: 'pointer',
-            }}
-          >
-            <option value="">All Statuses</option>
-            <option value="PASS">Pass</option>
-            <option value="FAIL">Fail</option>
-            <option value="BLOCKED">Blocked</option>
-            <option value="NOT EXECUTED">Not Executed</option>
-          </select>
+              {/* Column Selector */}
+              <div style={{ position: 'relative' }}>
+                <button
+                  onClick={() => setShowColSelector(!showColSelector)}
+                  style={{
+                    background: 'var(--bg-secondary)', border: '1px solid var(--border)',
+                    borderRadius: 8, color: 'var(--text-secondary)', fontSize: 12,
+                    padding: '7px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+                    transition: 'all 0.2s', fontWeight: 600,
+                  }}
+                  onMouseOver={(e) => e.currentTarget.style.borderColor = 'var(--accent-cyan)'}
+                  onMouseOut={(e) => e.currentTarget.style.borderColor = showColSelector ? 'var(--accent-cyan)' : 'var(--border)'}
+                >
+                  👁️ View Columns
+                </button>
+                {showColSelector && (
+                  <>
+                    <div
+                      onClick={() => setShowColSelector(false)}
+                      style={{ position: 'fixed', inset: 0, zIndex: 999 }}
+                    />
+                    <div style={{
+                      position: 'absolute', right: 0, top: 'calc(100% + 6px)',
+                      background: 'var(--bg-card)', border: '1px solid var(--border)',
+                      borderRadius: 10, padding: '12px 14px', width: 220, zIndex: 1000,
+                      boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 16px -8px rgba(0,0,0,0.1)',
+                      display: 'flex', flexDirection: 'column', gap: 8,
+                      maxHeight: 320, overflowY: 'auto',
+                    }}>
+                      <div style={{
+                        fontSize: 10, fontWeight: 700, color: 'var(--text-muted)',
+                        textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4,
+                        borderBottom: '1px solid var(--border)', paddingBottom: 6,
+                      }}>
+                        Select Columns
+                      </div>
+                      {REQUIRED_COLUMNS.map(col => {
+                        const isVisible = visibleCols.includes(col);
+                        const isDisabled = col === 'Sr No';
+                        return (
+                          <label
+                            key={col}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: 8, fontSize: 12,
+                              color: isVisible ? 'var(--text-primary)' : 'var(--text-secondary)',
+                              cursor: isDisabled ? 'not-allowed' : 'pointer',
+                              userSelect: 'none',
+                              padding: '2px 0',
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isVisible}
+                              disabled={isDisabled}
+                              onChange={() => {
+                                if (isVisible) {
+                                  setVisibleCols(visibleCols.filter(c => c !== col));
+                                } else {
+                                  const nextCols = REQUIRED_COLUMNS.filter(c => c === col || visibleCols.includes(c));
+                                  setVisibleCols(nextCols);
+                                }
+                              }}
+                              style={{ accentColor: 'var(--accent-cyan)', cursor: isDisabled ? 'not-allowed' : 'pointer' }}
+                            />
+                            {col}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
 
-          {/* Search */}
-          <div style={{ position: 'relative' }}>
-            <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: 'var(--text-muted)' }}>🔍</span>
-            <input
-              value={search}
-              onChange={handleSearch}
-              placeholder="Search..."
-              style={{
-                background: 'var(--bg-secondary)', border: '1px solid var(--border)',
-                borderRadius: 8, color: 'var(--text-primary)', fontSize: 12,
-                padding: '7px 12px 7px 30px', outline: 'none', width: 180,
-              }}
-            />
-          </div>
+              {/* Status filter */}
+              <select
+                value={statusFilter}
+                onChange={handleStatusFilter}
+                style={{
+                  background: 'var(--bg-secondary)', border: '1px solid var(--border)',
+                  borderRadius: 8, color: 'var(--text-secondary)', fontSize: 12,
+                  padding: '7px 12px', outline: 'none', cursor: 'pointer',
+                }}
+              >
+                <option value="">All Statuses</option>
+                <option value="PASS">Pass</option>
+                <option value="FAIL">Fail</option>
+                <option value="BLOCKED">Blocked</option>
+                <option value="NOT EXECUTED">Not Executed</option>
+              </select>
+
+              {/* Search */}
+              <div style={{ position: 'relative' }}>
+                <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: 'var(--text-muted)' }}>🔍</span>
+                <input
+                  value={search}
+                  onChange={handleSearch}
+                  placeholder="Search..."
+                  style={{
+                    background: 'var(--bg-secondary)', border: '1px solid var(--border)',
+                    borderRadius: 8, color: 'var(--text-primary)', fontSize: 12,
+                    padding: '7px 12px 7px 30px', outline: 'none', width: 180,
+                  }}
+                />
+              </div>
+            </>
+          )}
         </div>
       </div>
 
       {/* Table */}
-      <div style={{ overflowX: 'auto' }}>
+      <div style={{ overflowX: 'auto', maxHeight: '600px', overflowY: 'auto', position: 'relative' }}>
         <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr>
-              {previewCols.map(col => (
+              <th style={{ width: 46, textAlign: 'center', padding: '10px 14px' }}>
+                <input
+                  type="checkbox"
+                  checked={allFilteredSelected}
+                  ref={el => {
+                    if (el) el.indeterminate = someFilteredSelected;
+                  }}
+                  onChange={handleSelectAll}
+                  style={{ accentColor: 'var(--accent-cyan)', cursor: 'pointer' }}
+                />
+              </th>
+              {visibleCols.map(col => (
                 <th
                   key={col}
                   onClick={() => handleSort(col)}
@@ -325,77 +484,126 @@ export default function FilePreview({ data, fileName, onUpdateRow, onMergeFile }
           <tbody>
             {paginated.length === 0 ? (
               <tr>
-                <td colSpan={previewCols.length} style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
+                <td colSpan={visibleCols.length + 1} style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
                   No rows match your filters
                 </td>
               </tr>
-            ) : paginated.map((row, i) => (
-              <tr key={i}>
-                {previewCols.map(col => {
-                  const globalIdx = data.indexOf(row);
-                  const isReadOnly = col === 'Sr No' || col === 'Test Case ID';
-                  const isDropdown = col === 'Status' || col === 'Severity' || col === 'Priority';
-                  const isText = !isReadOnly && !isDropdown;
-
-                  return (
-                    <td
-                      key={col}
-                      style={{
-                        minWidth: getColWidth(col),
-                        maxWidth: col === 'Test Case ID' ? 140 : undefined,
-                        padding: isText ? '6px 8px' : '10px 14px',
+            ) : paginated.map((row, i) => {
+              const globalIdx = data.indexOf(row);
+              const isSelected = selectedIdxs.includes(globalIdx);
+              return (
+                <tr key={i} style={{ background: isSelected ? 'rgba(2,132,199,0.04)' : undefined }}>
+                  <td style={{ width: 46, textAlign: 'center', padding: '10px 14px', verticalAlign: 'middle' }}>
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => {
+                        if (isSelected) {
+                          setSelectedIdxs(selectedIdxs.filter(idx => idx !== globalIdx));
+                        } else {
+                          setSelectedIdxs([...selectedIdxs, globalIdx]);
+                        }
                       }}
-                    >
-                      {col === 'Status' ? (
-                        <EditableStatus row={row} data={data} onUpdateRow={onUpdateRow} />
-                      ) : col === 'Severity' ? (
-                        <EditableSeverity row={row} data={data} onUpdateRow={onUpdateRow} />
-                      ) : col === 'Priority' ? (
-                        <EditablePriority row={row} data={data} onUpdateRow={onUpdateRow} />
-                      ) : isReadOnly ? (
-                        <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: 'DM Mono, monospace' }}>
-                          {row[col] || '—'}
-                        </span>
-                      ) : (
-                        <AutoResizingTextarea
-                          value={row[col] || ''}
-                          onChange={(e) => {
-                            const newVal = e.target.value;
-                            onUpdateRow(globalIdx, { ...row, [col]: newVal });
-                          }}
-                        />
-                      )}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
+                      style={{ accentColor: 'var(--accent-cyan)', cursor: 'pointer' }}
+                    />
+                  </td>
+                  {visibleCols.map(col => {
+                    const isReadOnly = col === 'Sr No' || col === 'Test Case ID';
+                    const isDropdown = col === 'Status' || col === 'Severity' || col === 'Priority';
+                    const isText = !isReadOnly && !isDropdown;
+
+                    return (
+                      <td
+                        key={col}
+                        style={{
+                          minWidth: getColWidth(col),
+                          maxWidth: col === 'Test Case ID' ? 140 : undefined,
+                          padding: isText ? '6px 8px' : '10px 14px',
+                        }}
+                      >
+                        {col === 'Status' ? (
+                          <EditableStatus row={row} data={data} onUpdateRow={onUpdateRow} />
+                        ) : col === 'Severity' ? (
+                          <EditableSeverity row={row} data={data} onUpdateRow={onUpdateRow} />
+                        ) : col === 'Priority' ? (
+                          <EditablePriority row={row} data={data} onUpdateRow={onUpdateRow} />
+                        ) : isReadOnly ? (
+                          <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: 'DM Mono, monospace' }}>
+                            {row[col] || '—'}
+                          </span>
+                        ) : (
+                          <AutoResizingTextarea
+                            value={row[col] || ''}
+                            onChange={(e) => {
+                              const newVal = e.target.value;
+                              onUpdateRow(globalIdx, { ...row, [col]: newVal });
+                            }}
+                          />
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
 
       {/* Pagination */}
-      {totalPages > 1 && (
+      {filtered.length > 0 && (
         <div style={{
           padding: '12px 20px', borderTop: '1px solid var(--border)',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          flexWrap: 'wrap', gap: 12,
         }}>
-          <div style={{ display: 'flex', gap: 6 }}>
-            <PageBtn onClick={() => setPage(1)} disabled={page === 1}>«</PageBtn>
-            <PageBtn onClick={() => setPage(p => p - 1)} disabled={page === 1}>‹</PageBtn>
-            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-              const p = Math.min(Math.max(page - 2, 1), totalPages - 4) + i;
-              if (p < 1 || p > totalPages) return null;
-              return (
-                <PageBtn key={p} onClick={() => setPage(p)} active={p === page}>{p}</PageBtn>
-              );
-            })}
-            <PageBtn onClick={() => setPage(p => p + 1)} disabled={page === totalPages}>›</PageBtn>
-            <PageBtn onClick={() => setPage(totalPages)} disabled={page === totalPages}>»</PageBtn>
+          {totalPages > 1 ? (
+            <div style={{ display: 'flex', gap: 6 }}>
+              <PageBtn onClick={() => setPage(1)} disabled={page === 1}>«</PageBtn>
+              <PageBtn onClick={() => setPage(p => p - 1)} disabled={page === 1}>‹</PageBtn>
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                const p = Math.min(Math.max(page - 2, 1), totalPages - 4) + i;
+                if (p < 1 || p > totalPages) return null;
+                return (
+                  <PageBtn key={p} onClick={() => setPage(p)} active={p === page}>{p}</PageBtn>
+                );
+              })}
+              <PageBtn onClick={() => setPage(p => p + 1)} disabled={page === totalPages}>›</PageBtn>
+              <PageBtn onClick={() => setPage(totalPages)} disabled={page === totalPages}>»</PageBtn>
+            </div>
+          ) : (
+            <div />
+          )}
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Show:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  const size = val === 'all' ? 'all' : parseInt(val, 10);
+                  setPageSize(size);
+                  setPage(1);
+                }}
+                style={{
+                  background: 'var(--bg-secondary)', border: '1px solid var(--border)',
+                  borderRadius: 6, color: 'var(--text-secondary)', fontSize: 12,
+                  padding: '4px 8px', outline: 'none', cursor: 'pointer',
+                  fontWeight: 500,
+                }}
+              >
+                <option value={10}>10 rows</option>
+                <option value={20}>20 rows</option>
+                <option value={50}>50 rows</option>
+                <option value={100}>100 rows</option>
+                <option value="all">View All</option>
+              </select>
+            </div>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+              Page {page} of {totalPages || 1}
+            </span>
           </div>
-          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-            Page {page} of {totalPages}
-          </span>
         </div>
       )}
     </motion.div>

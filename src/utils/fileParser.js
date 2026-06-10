@@ -1,5 +1,8 @@
 import * as XLSX from 'xlsx';
-import { validateColumns, normalizeHeaders, normalizeStatus, normalizeSeverity, normalizePriority } from '../services/validationService';
+import {
+  validateColumns, normalizeHeaders, normalizeStatus, normalizeSeverity,
+  normalizePriority, parseDateToYYYYMMDD
+} from '../services/validationService';
 import { REQUIRED_COLUMNS } from '../constants';
 
 export async function parseFile(file) {
@@ -33,7 +36,16 @@ export async function parseFile(file) {
           const obj = {};
           REQUIRED_COLUMNS.forEach(col => {
             const idx = headerMap[col];
-            obj[col] = idx !== undefined ? (row[idx]?.toString().trim() || '') : '';
+            if (idx !== undefined) {
+              const val = row[idx];
+              if (val instanceof Date) {
+                obj[col] = parseDateToYYYYMMDD(val);
+              } else {
+                obj[col] = val !== undefined && val !== null ? val.toString().trim() : '';
+              }
+            } else {
+              obj[col] = '';
+            }
           });
 
           // Normalize key fields
@@ -48,16 +60,12 @@ export async function parseFile(file) {
 
           // Handle date formatting
           if (obj['Execution Date']) {
-            try {
-              const d = new Date(obj['Execution Date']);
-              if (!isNaN(d.getTime())) {
-                obj['Execution Date'] = d.toISOString().split('T')[0];
-              }
-            } catch {}
+            obj['Execution Date'] = parseDateToYYYYMMDD(obj['Execution Date']);
           }
 
           return obj;
         });
+
 
         resolve({ valid: true, missing: [], data: rows });
       } catch (err) {

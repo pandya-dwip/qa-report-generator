@@ -92,6 +92,24 @@ export default function App() {
     }
   }, [data, activeHistoryId, fetchReports]);
 
+  const handleUpdateRowsBulk = useCallback(async (updates) => {
+    if (!data || !updates.length) return;
+    const newData = [...data];
+    updates.forEach(({ index, updatedRow }) => {
+      newData[index] = updatedRow;
+    });
+    setData(newData);
+
+    if (activeHistoryId) {
+      try {
+        await updateReport(activeHistoryId, newData);
+        fetchReports();
+      } catch (err) {
+        console.error('Failed to auto-save bulk changes:', err);
+      }
+    }
+  }, [data, activeHistoryId, fetchReports]);
+
   const handleMergeFile = useCallback(async (file) => {
     if (!data) return;
     setIsLoading(true);
@@ -292,6 +310,7 @@ export default function App() {
                           data={data}
                           fileName={fileName}
                           onUpdateRow={handleUpdateRow}
+                          onUpdateRowsBulk={handleUpdateRowsBulk}
                           onMergeFile={handleMergeFile}
                         />
                       </Section>

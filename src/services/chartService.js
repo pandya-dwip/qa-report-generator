@@ -1,5 +1,7 @@
 import { CHART_COLORS } from '../constants';
-import { normalizeStatus, normalizeSeverity, normalizePriority } from './validationService';
+import {
+  normalizeStatus, normalizeSeverity, normalizePriority, parseDateToYYYYMMDD
+} from './validationService';
 
 export function computeStats(data) {
   const total = data.length;
@@ -120,13 +122,9 @@ export function getDailyTrendData(data) {
   const dateMap = {};
   data.forEach(row => {
     const dateRaw = row['Execution Date'];
-    if (!dateRaw) return;
-    let d;
-    try {
-      d = new Date(dateRaw);
-      if (isNaN(d.getTime())) return;
-    } catch { return; }
-    const key = d.toISOString().split('T')[0];
+    const key = parseDateToYYYYMMDD(dateRaw);
+    if (!key) return;
+
     if (!dateMap[key]) dateMap[key] = { pass: 0, fail: 0 };
     const s = normalizeStatus(row['Status']);
     if (s === 'PASS') dateMap[key].pass++;
@@ -150,3 +148,4 @@ export function getDailyTrendData(data) {
     ]
   };
 }
+
