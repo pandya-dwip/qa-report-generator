@@ -59,6 +59,6 @@ h1, h2, h3, h4, h5 { font-family: 'Syne', sans-serif; }
   white-space: normal;
 }
 
-.data-table tbody tr { border-bottom: 1px solid var(--border); transition: background 0.15s; }
-.data-table tbody tr:hover { background: var(--bg-card-hover); }
-.data-table tbody td { padding: 10px 14px; font-size: 13px; color: var(--text-primary); vertical-align: top; }
+.data-table tbody tr { border-bottom: 1px solid var(--border); transition: background-color 0.15s ease; }
+.data-table tbody tr:hover { background: rgba(2, 132, 199, 0.02); }
+.data-table tbody td { padding: 10px 14px; font-size: 13px; color: var(--text-primary); vertical-align: middle; transition: background-color 0.15s ease; }

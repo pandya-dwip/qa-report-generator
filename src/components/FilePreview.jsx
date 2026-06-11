@@ -177,7 +177,19 @@ function EditablePriority({ row, data, onUpdateRow }) {
   );
 }
 
-export default function FilePreview({ data, fileName, onUpdateRow, onUpdateRowsBulk, onMergeFile }) {
+function TrashIcon({ size = 16, color = 'currentColor' }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 6h18" />
+      <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+      <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+      <line x1="10" y1="11" x2="10" y2="17" />
+      <line x1="14" y1="11" x2="14" y2="17" />
+    </svg>
+  );
+}
+
+export default function FilePreview({ data, fileName, onUpdateRow, onUpdateRowsBulk, onDeleteRow, onDeleteRowsBulk, onMergeFile }) {
   const [search, setSearch] = useState('');
   const [pageSize, setPageSize] = useState(PAGE_SIZE);
   const [page, setPage] = useState(1);
@@ -185,6 +197,7 @@ export default function FilePreview({ data, fileName, onUpdateRow, onUpdateRowsB
   const [sortDir, setSortDir] = useState('asc');
   const [statusFilter, setStatusFilter] = useState('');
   const [selectedIdxs, setSelectedIdxs] = useState([]);
+  const [deleteTarget, setDeleteTarget] = useState(null); // { type: 'single' | 'bulk', index?: number, indices?: number[] }
 
   const DEFAULT_HIDDEN = useMemo(() => ['Test Type', 'Test Case ID', 'Test Steps', 'Priority', 'Severity'], []);
   const [visibleCols, setVisibleCols] = useState(() => {
@@ -317,6 +330,23 @@ export default function FilePreview({ data, fileName, onUpdateRow, onUpdateRowsB
                 <option value="BLOCKED">BLOCKED</option>
                 <option value="NOT EXECUTED">NOT EXECUTED</option>
               </select>
+
+              <button
+                onClick={() => {
+                  setDeleteTarget({ type: 'bulk', indices: selectedIdxs });
+                }}
+                style={{
+                  background: 'rgba(239, 68, 68, 0.08)', border: '1px solid var(--accent-red)',
+                  borderRadius: 8, color: 'var(--accent-red)', fontSize: 12,
+                  padding: '7px 12px', cursor: 'pointer', fontWeight: 600,
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  transition: 'all 0.2s',
+                }}
+                onMouseOver={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)'}
+                onMouseOut={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.08)'}
+              >
+                <TrashIcon size={14} color="currentColor" /> Delete Selected
+              </button>
             </div>
           ) : (
             <>
@@ -479,12 +509,15 @@ export default function FilePreview({ data, fileName, onUpdateRow, onUpdateRowsB
                   </span>
                 </th>
               ))}
+              <th style={{ width: 60, textAlign: 'center', padding: '10px 14px' }}>
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody>
             {paginated.length === 0 ? (
               <tr>
-                <td colSpan={visibleCols.length + 1} style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
+                <td colSpan={visibleCols.length + 2} style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
                   No rows match your filters
                 </td>
               </tr>
@@ -543,6 +576,27 @@ export default function FilePreview({ data, fileName, onUpdateRow, onUpdateRowsB
                       </td>
                     );
                   })}
+                  <td style={{ width: 60, textAlign: 'center', padding: '6px 8px', verticalAlign: 'middle' }}>
+                    <button
+                      onClick={() => setDeleteTarget({ type: 'single', index: globalIdx })}
+                      title="Delete Test Case"
+                      style={{
+                        background: 'transparent', border: 'none', color: '#94a3b8',
+                        cursor: 'pointer', padding: '6px', borderRadius: 6,
+                        transition: 'all 0.15s', display: 'inline-flex', alignItems: 'center', justifyContent: 'center'
+                      }}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.background = 'rgba(239, 68, 68, 0.08)';
+                        e.currentTarget.style.color = '#ef4444';
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.background = 'transparent';
+                        e.currentTarget.style.color = '#94a3b8';
+                      }}
+                    >
+                      <TrashIcon size={15} />
+                    </button>
+                  </td>
                 </tr>
               );
             })}
@@ -604,6 +658,67 @@ export default function FilePreview({ data, fileName, onUpdateRow, onUpdateRowsB
               Page {page} of {totalPages || 1}
             </span>
           </div>
+        </div>
+      )}
+
+      {deleteTarget && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.3)',
+          backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center',
+          justifyContent: 'center', zIndex: 9999,
+        }}>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            style={{
+              background: 'var(--bg-card)', border: '1px solid var(--border)',
+              borderRadius: 16, padding: '24px', width: '90%', maxWidth: 400,
+              boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+              <span style={{ fontSize: 22 }}>⚠️</span>
+              <h4 style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 16, color: 'var(--text-primary)', margin: 0 }}>
+                Confirm Deletion
+              </h4>
+            </div>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 24 }}>
+              {deleteTarget.type === 'bulk'
+                ? `Are you sure you want to delete the ${deleteTarget.indices.length} selected test cases? This action cannot be undone.`
+                : `Are you sure you want to delete this test case? This action cannot be undone.`}
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button
+                onClick={() => setDeleteTarget(null)}
+                style={{
+                  background: 'var(--bg-secondary)', border: '1px solid var(--border)',
+                  borderRadius: 8, color: 'var(--text-secondary)', fontSize: 12,
+                  padding: '8px 16px', cursor: 'pointer', fontWeight: 600,
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (deleteTarget.type === 'bulk') {
+                    onDeleteRowsBulk?.(deleteTarget.indices);
+                    setSelectedIdxs([]);
+                  } else {
+                    onDeleteRow?.(deleteTarget.index);
+                  }
+                  setDeleteTarget(null);
+                }}
+                style={{
+                  background: 'var(--accent-red)', border: 'none',
+                  borderRadius: 8, color: '#ffffff', fontSize: 12,
+                  padding: '8px 16px', cursor: 'pointer', fontWeight: 600,
+                  boxShadow: '0 2px 4px rgba(239, 68, 68, 0.2)',
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          </motion.div>
         </div>
       )}
     </motion.div>

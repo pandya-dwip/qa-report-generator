@@ -611,7 +611,7 @@ function buildSummarySheet(wb, data, isGoogleSheets) {
 
 // ── Main Export Function ───────────────────────────────────────────────────────
 
-export async function generateExcelReport(data, onProgress, isGoogleSheets = false) {
+export async function generateExcelReport(data, onProgress, isGoogleSheets = false, customFileName = '') {
   const wb = new ExcelJS.Workbook();
   wb.creator = 'QA Report Generator';
   wb.created = new Date();
@@ -636,9 +636,22 @@ export async function generateExcelReport(data, onProgress, isGoogleSheets = fal
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   });
 
-  const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '_');
-  const suffix = isGoogleSheets ? '_GoogleSheets' : '';
-  saveAs(blob, `QA_Report_${dateStr}${suffix}.xlsx`);
+  // Get base name without extension
+  let baseName = 'QA_Report';
+  if (customFileName) {
+    baseName = customFileName.replace(/\.(xlsx|xls|csv)$/i, '');
+  }
+
+  // Get current date in DD_MM_YYYY format
+  const now = new Date();
+  const dd = String(now.getDate()).padStart(2, '0');
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const yyyy = now.getFullYear();
+  const dateStr = `${dd}_${mm}_${yyyy}`;
+
+  // Form final filename: Google Sheets has no extension suffix, Excel has .xlsx
+  const filename = isGoogleSheets ? `${baseName}_Sheet_${dateStr}` : `${baseName}_Sheet_${dateStr}.xlsx`;
+  saveAs(blob, filename);
 
   onProgress?.(100, 'Done!');
 }

@@ -110,6 +110,53 @@ export default function App() {
     }
   }, [data, activeHistoryId, fetchReports]);
 
+  const handleDeleteRow = useCallback(async (index) => {
+    if (!data) return;
+
+    const newData = data.filter((_, idx) => idx !== index);
+    // Re-index Sr No sequentially
+    newData.forEach((row, idx) => {
+      row['Sr No'] = (idx + 1).toString();
+    });
+
+    setData(newData);
+
+    if (activeHistoryId) {
+      try {
+        await updateReport(activeHistoryId, newData);
+        fetchReports();
+        addToast('Test case deleted successfully', 'success');
+      } catch (err) {
+        console.error('Failed to auto-save deletion:', err);
+      }
+    } else {
+      addToast('Test case deleted successfully', 'success');
+    }
+  }, [data, activeHistoryId, fetchReports, addToast]);
+
+  const handleDeleteRowsBulk = useCallback(async (indices) => {
+    if (!data || !indices.length) return;
+    const newData = data.filter((_, idx) => !indices.includes(idx));
+    // Re-index Sr No sequentially
+    newData.forEach((row, idx) => {
+      row['Sr No'] = (idx + 1).toString();
+    });
+
+    setData(newData);
+
+    if (activeHistoryId) {
+      try {
+        await updateReport(activeHistoryId, newData);
+        fetchReports();
+        addToast(`Deleted ${indices.length} test cases successfully`, 'success');
+      } catch (err) {
+        console.error('Failed to auto-save bulk deletion:', err);
+      }
+    } else {
+      addToast(`Deleted ${indices.length} test cases successfully`, 'success');
+    }
+  }, [data, activeHistoryId, fetchReports, addToast]);
+
   const handleMergeFile = useCallback(async (file) => {
     if (!data) return;
     setIsLoading(true);
@@ -311,6 +358,8 @@ export default function App() {
                           fileName={fileName}
                           onUpdateRow={handleUpdateRow}
                           onUpdateRowsBulk={handleUpdateRowsBulk}
+                          onDeleteRow={handleDeleteRow}
+                          onDeleteRowsBulk={handleDeleteRowsBulk}
                           onMergeFile={handleMergeFile}
                         />
                       </Section>
@@ -352,6 +401,7 @@ export default function App() {
                       </div>
                       <ExportButton
                         data={data}
+                        fileName={fileName}
                         onSuccess={() => addToast('Report downloaded successfully!', 'success')}
                         onError={(msg) => addToast('Export failed: ' + msg, 'error')}
                       />

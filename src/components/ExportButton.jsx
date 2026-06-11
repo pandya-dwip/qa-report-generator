@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { generateExcelReport } from '../services/excelService';
 
-export default function ExportButton({ data, onSuccess, onError }) {
+export default function ExportButton({ data, fileName, onSuccess, onError }) {
   const [state, setState] = useState('idle'); // idle | loading | done
   const [exportType, setExportType] = useState(null); // 'excel' | 'gsheets'
   const [progress, setProgress] = useState(0);
@@ -21,7 +21,7 @@ export default function ExportButton({ data, onSuccess, onError }) {
       await generateExcelReport(data, (pct, msg) => {
         setProgress(pct);
         setProgressMsg(msg);
-      }, isGoogleSheets);
+      }, isGoogleSheets, fileName);
       setState('done');
       onSuccess?.();
       setTimeout(() => {

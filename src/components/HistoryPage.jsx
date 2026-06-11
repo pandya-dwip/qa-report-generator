@@ -10,7 +10,7 @@ export default function HistoryPage({ reports, onEdit, onDelete, onRename, onToa
     try {
       const msg = isGoogleSheets ? 'Generating Google Sheet optimized file...' : 'Generating Excel file...';
       onToast?.(msg, 'info');
-      await generateExcelReport(report.data, null, isGoogleSheets);
+      await generateExcelReport(report.data, null, isGoogleSheets, report.fileName);
       onToast?.('File downloaded successfully!', 'success');
     } catch (err) {
       onToast?.(err.message || 'Failed to export report.', 'error');
