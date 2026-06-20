@@ -1,87 +1,295 @@
-# QA Report Generator v2.0
+# QA Report Generator
 
-A premium, 100% client-side React + Vite web application to transform raw QA test case files (`.xlsx`, `.xls`, `.csv`) into professional, highly styled Excel sheets and Google Sheets-optimized reports. Features offline local storage, interactive previews with inline spreadsheet editing, data analytics, automatic tested-by column defaults, and dynamic formula calculations.
-
----
-
-## Key Features
-
-### 1. Premium Light Mode UI Theme
-- Designed with a clean, high-contrast Slate color palette.
-- Dynamic color-coded priority, severity, and status badges for readability.
-- Full-width layout utilizing the full viewport space with zero page-level scrolling.
-- Sticky table headers and fixed layouts for seamless editing experience.
-
-### 2. Auto-Resizing Spreadsheet Grid
-- Edit cells directly inline like a spreadsheet (status select badges, comments, results, etc.).
-- Fully hides auxiliary fields (`Test Type`, `Test Case ID`, `Test Steps`, `Priority`, `Severity`) in the UI preview for a clean editor interface, while preserving them for exports.
-- **Scroll-Free Textareas**: Multi-line cells automatically resize their height based on contents, eliminating inner vertical scrollbars.
-- Indented padding configured to perfectly align editable text cells with column headers.
-
-### 3. Precise Relative Test Case Insertion
-- Add new test cases above or below any selected test case row in the grid.
-- Interactive popup modal to input all test case details.
-- Automatically handles index correction, re-sequences `Sr No`, updates analytics charts, and auto-saves changes locally.
-
-### 4. Custom Delete Confirmations
-- Replaced generic browser confirmation alerts with a modern, custom styled dialog modal.
-- Provides bulk and single test case deletion confirmation to prevent accidental data loss.
-
-### 5. Smart Dual-Format Exports & Filenames
-- **Dynamic Filename Resolution**: Exports default to the edited report name with current date suffixes (e.g., `CMS_QA_Report_Sheet_11_06_2026.xlsx` or `CMS_QA_Report_Sheet_11_06_2026`).
-- **MS Excel (.xlsx)**: Generates highly formatted workbooks with solid color fills, KPI dashboards, merged titles, and sequential tables.
-- **Google Sheets Optimized**: Automatically converts thin borders (avoiding `hair` lines that Google Sheets ignores) and scales column widths (+10-15%) to prevent text clipping and truncation on import.
-- **Dynamic Formulas**: All summary tables and KPI metrics are calculated in real-time inside the sheet using native UPPERCASE formulas (`ROWS`, `COUNTIF`, `COUNTIFS`, `SUM`, `IF`) to dynamically update if fields change.
-
-### 6. Persistent Offline History (IndexedDB)
-- Access previously uploaded test runs from a dedicated **History Page** tab.
-- Stored completely client-side in the browser's database (`IndexedDB`) – **zero server uploads or data leaks**.
-- Features inline card renaming (pencil edit tool) and direct download buttons (Excel and Google Sheets format) from any log card.
-
-### 7. Tested By Auto-Default & Merging
-- Automatically defaults blank `Tested By` columns to `"Dwip Pandya"` during file parsing.
-- Merges separate test case files by unique `Test Case ID` matching (overwriting existing fields, appending new tests, and auto-resequencing `Sr No`).
+> A professional, fully client-side QA test case management and reporting tool — upload, edit, analyze, and export test case data with zero backend required.
 
 ---
 
-## Tech Stack & Libraries
+## Table of Contents
 
-- **Frontend**: React 18, Vite, HMR
-- **Styling**: Vanilla CSS custom variables
-- **Icons**: Lucide React (professional design iconography)
-- **Transitions**: Framer Motion
-- **Spreadsheets & Downloads**: ExcelJS, FileSaver, PapaParse (CSV parser)
-- **Charts**: Chart.js, React-Chartjs-2
-- **Database**: Native browser IndexedDB
+- [Overview](#overview)
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Getting Started](#getting-started)
+- [Usage Guide](#usage-guide)
+- [Required File Format](#required-file-format)
+- [Export Options](#export-options)
+- [Project Structure](#project-structure)
+- [Configuration](#configuration)
+
+---
+
+## Overview
+
+**QA Report Generator** is a fully client-side web application built with React and Vite that streamlines the QA reporting workflow. Teams can upload raw test case spreadsheets, edit data inline, visualize execution status with interactive charts, and export polished, formula-driven Excel reports — all without any server or internet connection.
+
+All data is persisted locally in the browser via IndexedDB, meaning reports survive page refreshes and can be loaded, renamed, or deleted from a built-in history panel.
+
+---
+
+## Features
+
+### File Upload & Parsing
+- Drag-and-drop or click-to-select `.xlsx`, `.xls`, and `.csv` files
+- Validates all 17 required columns on upload with a clear, actionable error panel
+- Auto-normalizes `Status`, `Severity`, and `Priority` values (case-insensitive)
+- Parses dates in multiple formats: `YYYY-MM-DD`, `DD-MM-YYYY`, ISO 8601, and Excel serial numbers
+- Merges uploaded files by unique `Test Case ID` — overwrites existing rows and appends new ones
+
+### Inline Data Editing
+- Edit any cell directly in the table — textareas auto-resize for long content
+- Dropdown fields (`Status`, `Severity`, `Priority`) render as color-coded inline selectors
+- Add new test cases with full control over insertion position (before/after selection, at start or end)
+- Delete single rows or bulk-delete selected rows, each with a styled confirmation dialog
+- `Sr No` column auto-reindexes after every add or delete operation
+
+### Search, Filter & Sort
+- Real-time search across all columns simultaneously
+- Filter by execution status: `Pass`, `Fail`, `Blocked`, `Not Executed`
+- Sort by any column (ascending / descending toggle)
+- Toggle column visibility (with `Sr No` always pinned)
+- Configurable pagination: 10, 20, 50, 100 rows, or view all
+
+### Analytics Dashboard
+- Live KPI cards: Total Cases, Passed, Failed, Blocked, Not Executed
+- Pass rate percentage with a visual progress bar
+- Five interactive charts:
+  - **Doughnut** — overall execution status breakdown
+  - **Pie** — severity distribution
+  - **Pie** — priority distribution
+  - **Bar** — module-wise execution breakdown
+  - **Line** — daily trend (pass/fail over time)
+- Charts panel is collapsible to maximize table space
+
+### Bulk Operations
+- Select all / deselect all rows with a header checkbox
+- Apply a status update to all selected rows at once
+
+### Local Report History
+- Auto-saves every edit to IndexedDB (no upload limit, no network calls)
+- Browse past reports in the History tab: name, case count, last modified timestamp
+- Rename or delete reports directly from the history list
+- One-click load for continued editing or re-export
+
+### Export
+| Format | Description |
+|--------|-------------|
+| **Excel (.xlsx)** | 4-sheet workbook with KPI dashboard, project details, full test cases, and module summary — all with live formulas |
+| **Google Sheets** | Same 4-sheet structure with column widths and border styles optimized for Google Drive import |
+| **Test Cases Only** | Lightweight single-sheet `.xlsx` containing just the test data |
+
+---
+
+## Tech Stack
+
+| Layer | Library / Tool | Version |
+|-------|---------------|---------|
+| UI Framework | React | 19.2.6 |
+| Build Tool | Vite | 8.0.12 |
+| Styling | TailwindCSS | 4.3.0 |
+| Animation | Framer Motion | 12.40.0 |
+| Icons | Lucide React | 1.21.0 |
+| Excel Export | ExcelJS | 4.4.0 |
+| File Parsing | XLSX (SheetJS) | 0.18.5 |
+| File Download | FileSaver.js | 2.0.5 |
+| Charts | Chart.js + react-chartjs-2 | 4.5.1 / 5.3.1 |
+| Local Storage | IndexedDB (browser native) | — |
+| Linting | ESLint | 10.3.0 |
 
 ---
 
 ## Getting Started
 
-### 1. Installation
-Install the project dependencies locally:
-```bash
-npm install
-```
+### Prerequisites
 
-### 2. Run the Development Server
-Launch the local development environment:
+- Node.js 18 or newer
+- npm 9 or newer
+
+### Installation
+
 ```bash
+# Clone the repository
+git clone <repo-url>
+cd qa-report-generator
+
+# Install dependencies
+npm install
+
+# Start the development server
 npm run dev
 ```
-Open `http://localhost:5173` in your browser.
 
-### 3. Build for Production
-Bundle the optimized web app for production:
+The app will be available at `http://localhost:5173`.
+
+### Available Scripts
+
 ```bash
-npm run build
+npm run dev       # Start dev server with hot reload
+npm run build     # Build for production (outputs to /dist)
+npm run preview   # Preview the production build locally
+npm run lint      # Run ESLint across the project
 ```
-Outputs are compiled into the `dist/` directory, ready to be served from any static site hosting (Vercel, Netlify, GitHub Pages, etc.) since the app requires no database backend.
+
+> The production build outputs a fully static bundle in `/dist` that can be hosted on any static server — Vercel, Netlify, GitHub Pages, or a plain nginx instance. No backend is required.
 
 ---
 
-## Expected Input Column Header Format
-When uploading files, ensure they contain the following columns:
+## Usage Guide
+
+### 1 — Upload a File
+
+On the **Workspace** tab, drag your `.xlsx`, `.xls`, or `.csv` file onto the upload zone in the sidebar, or click to open a file picker. The app validates all required columns and shows a detailed error panel if any are missing.
+
+A sample file (`sample_qa_cases.csv`) is included in the repository root to demonstrate the expected format.
+
+### 2 — Edit Test Cases
+
+The main table supports full inline editing:
+
+- Click any text cell to edit it in place
+- Use the color-coded dropdowns for `Status`, `Severity`, and `Priority`
+- Use the toolbar to add rows, delete selected rows, or apply bulk status changes
+- Use the search bar and filter dropdowns in the toolbar to narrow the view
+- Toggle column visibility from the column-selector button in the toolbar
+
+### 3 — Review Analytics
+
+Click the **Charts** toggle in the header toolbar to expand the analytics panel. KPI summary cards and the pass-rate progress bar are always visible in the sidebar whenever data is loaded.
+
+### 4 — Export
+
+Click the **Export** button in the top-right header to open the export menu and choose a format. The file generates and downloads instantly in the browser — no upload, no wait.
+
+### 5 — History
+
+Switch to the **History** tab to browse all previously saved reports. Reports are auto-saved to IndexedDB on every edit. From the history list you can load, rename, export, or permanently delete any saved report.
+
+---
+
+## Required File Format
+
+Uploaded files must contain all 17 of the following columns. Column order does not matter; header names are matched case-insensitively.
+
+| Column | Description |
+|--------|-------------|
+| `Sr No` | Serial number — auto-managed by the app |
+| `Module` | Feature or functional area under test |
+| `Test Case ID` | Unique identifier for the test case |
+| `Test Type` | e.g. Functional, Security, Regression, Performance |
+| `Test Scenario` | Full description of the test scenario |
+| `Simplified Test Scenario` | Short summary of the scenario |
+| `Test Steps` | Step-by-step execution instructions |
+| `Expected Result` | The expected system behavior |
+| `Actual Result` | The observed system behavior |
+| `Priority` | `HIGH`, `MEDIUM`, or `LOW` |
+| `Severity` | `CRITICAL`, `HIGH`, `MEDIUM`, or `LOW` |
+| `Status` | `PASS`, `FAIL`, `BLOCKED`, or `NOT EXECUTED` |
+| `Tested By` | Name of the QA engineer |
+| `Execution Date` | Date the test was run (`YYYY-MM-DD` recommended) |
+| `Defect No. / Bug No.` | Legacy defect reference field |
+| `Defect ID` | Bug tracker ID (rendered as a hyperlink in Excel exports) |
+| `QA Comments` | Additional notes or observations |
+
+A sample file demonstrating this format is included at [sample_qa_cases.csv](sample_qa_cases.csv).
+
+---
+
+## Export Options
+
+### Excel Export — 4 Sheets
+
+| Sheet | Contents |
+|-------|---------|
+| **Dashboard** | KPI cards with live `COUNTIF` formulas, module-wise breakdown table, severity and priority summary grid |
+| **Project Details** | Editable project metadata (name, build version, environment, test cycle, dates, remarks) with an auto-calculated execution summary |
+| **Test Cases** | Full 17-column dataset with frozen headers, auto-filters, and conditional cell formatting for `Status`, `Severity`, and `Priority` |
+| **Summary** | Module-wise execution totals with pass percentage column and a formatted totals row |
+
+Additional Excel features: merged title cells, Arial font throughout, optimized column widths, percentage number formatting (`0.0%`), alternating row shading in the Summary sheet, and `HYPERLINK` formulas on all `Defect ID` values.
+
+### Google Sheets Export
+
+Identical 4-sheet structure with column widths scaled up 10–15% and borders converted from `hair` to `thin` style to prevent clipping and invisible lines on import. Download the file and use **File → Import** in Google Drive.
+
+### Test Cases Only Export
+
+A minimal single-sheet `.xlsx` containing only the raw test case data — ideal for sharing with stakeholders who don't need the dashboard or summary.
+
+---
+
+## Project Structure
+
 ```
-Sr No · Module · Test Case ID · Test Type · Test Scenario · Simplified Test Scenario · Test Steps · Expected Result · Actual Result · Priority · Severity · Status · Tested By · Execution Date · Defect No. / Bug No. · Defect ID · QA Comments
+qa-report-generator/
+├── src/
+│   ├── components/
+│   │   ├── Header.jsx           # Navigation tabs, export dropdown, status badges
+│   │   ├── Sidebar.jsx          # Upload zone, KPI cards, pass-rate bar, history list
+│   │   ├── FilePreview.jsx      # Main data table — inline edit, search, sort, paginate
+│   │   ├── ChartsSection.jsx    # Collapsible analytics charts panel
+│   │   ├── DashboardCards.jsx   # KPI summary card grid
+│   │   ├── HistoryPage.jsx      # Saved report browser
+│   │   ├── UploadBox.jsx        # Drag-and-drop file input
+│   │   ├── ValidationAlert.jsx  # Missing-column error display
+│   │   └── ToastContainer.jsx   # Toast notification system
+│   ├── services/
+│   │   ├── excelService.js      # 4-sheet workbook builder (ExcelJS)
+│   │   ├── chartService.js      # Statistics computation and chart dataset generators
+│   │   └── validationService.js # Column validation and field normalization
+│   ├── utils/
+│   │   ├── fileParser.js        # XLSX/CSV reader, header normalization, data mapping
+│   │   └── historyDb.js         # IndexedDB CRUD operations
+│   ├── hooks/
+│   │   └── useToast.js          # Toast notification state hook
+│   ├── constants/
+│   │   └── columns.js           # Column definitions and color scheme maps
+│   ├── App.jsx                  # Root component and global state
+│   ├── main.jsx                 # React entry point
+│   └── index.css                # Design tokens and global styles
+├── public/                      # Static assets
+├── sample_qa_cases.csv          # Example input file
+├── index.html                   # HTML shell
+├── vite.config.js               # Vite configuration
+└── package.json
 ```
+
+---
+
+## Configuration
+
+### Default Values for New Rows
+
+| Field | Default |
+|-------|---------|
+| `Status` | `NOT EXECUTED` |
+| `Priority` | `MEDIUM` |
+| `Severity` | `MEDIUM` |
+| `Execution Date` | Current date |
+| `Tested By` | `Dwip Pandya` |
+
+### Defect Hyperlinks
+
+In Excel exports, values in the `Defect ID` column are rendered as clickable hyperlinks. The base URL defaults to `https://jira.example.com/browse/`. Update this constant in [src/services/excelService.js](src/services/excelService.js) to point to your team's issue tracker.
+
+### Local Storage
+
+All report data is stored client-side in the browser's IndexedDB under the database name `qa-report-history`. No data is ever transmitted to a server. Clearing browser site data will erase all stored reports.
+
+---
+
+## Browser Compatibility
+
+The app targets modern evergreen browsers. The following APIs are required:
+
+- ES Modules
+- IndexedDB
+- FileReader API
+- CSS Grid, Flexbox, and Custom Properties
+
+**Supported:** Chrome 90+, Firefox 90+, Edge 90+, Safari 15+  
+**Not supported:** Internet Explorer
+
+---
+
+## License
+
+This project is licensed under the MIT License.
