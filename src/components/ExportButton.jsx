@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { generateExcelReport } from '../services/excelService';
+import { generateExcelReport, generateTestCasesSheet } from '../services/excelService';
 
 export default function ExportButton({ data, fileName, onSuccess, onError }) {
   const [state, setState] = useState('idle'); // idle | loading | done
@@ -15,13 +15,18 @@ export default function ExportButton({ data, fileName, onSuccess, onError }) {
     setExportType(type);
     setProgress(0);
 
-    const isGoogleSheets = type === 'gsheets';
-
     try {
-      await generateExcelReport(data, (pct, msg) => {
-        setProgress(pct);
-        setProgressMsg(msg);
-      }, isGoogleSheets, fileName);
+      if (type === 'gsheets-tc') {
+        await generateTestCasesSheet(data, (pct, msg) => {
+          setProgress(pct);
+          setProgressMsg(msg);
+        }, fileName);
+      } else {
+        await generateExcelReport(data, (pct, msg) => {
+          setProgress(pct);
+          setProgressMsg(msg);
+        }, type === 'gsheets', fileName);
+      }
       setState('done');
       onSuccess?.();
       setTimeout(() => {
@@ -153,6 +158,66 @@ export default function ExportButton({ data, fileName, onSuccess, onError }) {
             <>✅ Google Sheet Exported!</>
           ) : (
             <>📊 Export Google Sheet</>
+          )}
+        </span>
+      </motion.button>
+
+      {/* Google Sheets – Test Cases Only Button */}
+      <motion.button
+        onClick={() => handleExport('gsheets-tc')}
+        disabled={state === 'loading' || !data?.length}
+        whileHover={state === 'idle' && data?.length ? { scale: 1.02 } : {}}
+        whileTap={state === 'idle' && data?.length ? { scale: 0.98 } : {}}
+        style={{
+          width: '100%',
+          padding: '12px 20px',
+          borderRadius: 10,
+          border: !data?.length ? '1px solid var(--border)' : 'none',
+          cursor: state === 'loading' || !data?.length ? 'not-allowed' : 'pointer',
+          fontSize: 14,
+          fontFamily: 'Syne, sans-serif',
+          fontWeight: 700,
+          letterSpacing: '0.02em',
+          background: state === 'done' && exportType === 'gsheets-tc'
+            ? 'linear-gradient(135deg, #00C853, #10b981)'
+            : state === 'loading' && exportType === 'gsheets-tc'
+            ? 'var(--bg-secondary)'
+            : !data?.length
+            ? 'var(--bg-card)'
+            : 'linear-gradient(135deg, #0891b2, #0e7490)',
+          color: state === 'loading' && exportType === 'gsheets-tc'
+            ? 'var(--text-secondary)'
+            : !data?.length
+            ? 'var(--text-muted)'
+            : '#fff',
+          transition: 'all 0.3s ease',
+          position: 'relative',
+          overflow: 'hidden',
+        }}
+      >
+        {state === 'loading' && exportType === 'gsheets-tc' && (
+          <div style={{
+            position: 'absolute', left: 0, top: 0, bottom: 0,
+            width: `${progress}%`,
+            background: 'linear-gradient(90deg, rgba(8,145,178,0.2), rgba(14,116,144,0.2))',
+            transition: 'width 0.4s ease',
+          }} />
+        )}
+
+        <span style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+          {state === 'loading' && exportType === 'gsheets-tc' ? (
+            <>
+              <span style={{ fontSize: 13 }}>⚙️</span>
+              <span>{progressMsg || 'Exporting...'}</span>
+              <span style={{
+                fontFamily: 'DM Mono, monospace', fontSize: 11,
+                color: '#fff', marginLeft: 8,
+              }}>{progress}%</span>
+            </>
+          ) : state === 'done' && exportType === 'gsheets-tc' ? (
+            <>✅ Test Cases Exported!</>
+          ) : (
+            <>🧪 Export Test Cases (Google Sheet)</>
           )}
         </span>
       </motion.button>

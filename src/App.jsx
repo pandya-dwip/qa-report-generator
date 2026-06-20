@@ -9,7 +9,7 @@ import FilePreview from './components/FilePreview';
 import ToastContainer from './components/ToastContainer';
 import HistoryPage from './components/HistoryPage';
 import { parseFile } from './utils/fileParser';
-import { generateExcelReport } from './services/excelService';
+import { generateExcelReport, generateTestCasesSheet } from './services/excelService';
 import { useToast } from './hooks/useToast';
 import { saveReport, getAllReports, updateReport, deleteReport, renameReport } from './utils/historyDb';
 
@@ -155,6 +155,20 @@ export default function App() {
   const handleExcelExport   = useCallback(() => doExport(false), [doExport]);
   const handleGSheetsExport = useCallback(() => doExport(true),  [doExport]);
 
+  const handleGSheetsTCExport = useCallback(async () => {
+    if (!data?.length || exportState === 'loading') return;
+    setExportState('loading');
+    try {
+      await generateTestCasesSheet(data, null, fileName);
+      setExportState('done');
+      addToast('Test Cases sheet downloaded!', 'success');
+      setTimeout(() => setExportState('idle'), 2800);
+    } catch (err) {
+      setExportState('idle');
+      addToast('Export failed: ' + err.message, 'error');
+    }
+  }, [data, fileName, exportState, addToast]);
+
   /* ── History item actions ───────────────────── */
   const handleEditHistoryItem = useCallback((item) => {
     setData(item.data); setFileName(item.fileName);
@@ -197,6 +211,7 @@ export default function App() {
         data={data}
         onExcelExport={handleExcelExport}
         onGSheetsExport={handleGSheetsExport}
+        onGSheetsTCExport={handleGSheetsTCExport}
         exportState={exportState}
       />
 

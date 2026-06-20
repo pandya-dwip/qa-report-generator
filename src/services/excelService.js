@@ -609,6 +609,39 @@ function buildSummarySheet(wb, data, isGoogleSheets) {
   return ws;
 }
 
+// ── Test Cases Only Export (Google Sheet) ─────────────────────────────────────
+
+export async function generateTestCasesSheet(data, onProgress, customFileName = '') {
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'QA Report Generator';
+  wb.created = new Date();
+  wb.modified = new Date();
+
+  onProgress?.(20, 'Building Test Cases...');
+  buildTestCaseSheet(wb, data, true);
+
+  onProgress?.(80, 'Generating file...');
+
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+
+  let baseName = 'QA_Report';
+  if (customFileName) {
+    baseName = customFileName.replace(/\.(xlsx|xls|csv)$/i, '');
+  }
+
+  const now = new Date();
+  const dd = String(now.getDate()).padStart(2, '0');
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const yyyy = now.getFullYear();
+  const dateStr = `${dd}_${mm}_${yyyy}`;
+
+  saveAs(blob, `${baseName}_TestCases_${dateStr}`);
+  onProgress?.(100, 'Done!');
+}
+
 // ── Main Export Function ───────────────────────────────────────────────────────
 
 export async function generateExcelReport(data, onProgress, isGoogleSheets = false, customFileName = '') {

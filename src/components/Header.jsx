@@ -7,7 +7,7 @@ import {
 
 export default function Header({
   hasData, activeTab, setActiveTab, historyCount = 0,
-  data, onExcelExport, onGSheetsExport, exportState,
+  data, onExcelExport, onGSheetsExport, onGSheetsTCExport, exportState,
 }) {
   const [exportOpen, setExportOpen] = useState(false);
   const dropRef = useRef(null);
@@ -197,6 +197,12 @@ export default function Header({
                     Icon: Table, iconColor: '#0f9d58',
                     iconBg: 'linear-gradient(135deg,#0f9d58,#1a7a47)',
                     onClick: () => { onGSheetsExport?.(); setExportOpen(false); }
+                  },
+                  {
+                    label: 'Test Cases (Google Sheet)', sub: 'Test cases sheet only',
+                    Icon: TestTube2, iconColor: '#0891b2',
+                    iconBg: 'linear-gradient(135deg,#0891b2,#0e7490)',
+                    onClick: () => { onGSheetsTCExport?.(); setExportOpen(false); }
                   },
                 ].map(opt => (
                   <button
