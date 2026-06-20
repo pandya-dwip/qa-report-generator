@@ -1,54 +1,36 @@
 import { useState, useCallback, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { TestTube2, BarChart2, Pencil, Download } from 'lucide-react';
 import Header from './components/Header';
-import UploadBox from './components/UploadBox';
+import Sidebar from './components/Sidebar';
 import ValidationAlert from './components/ValidationAlert';
-import DashboardCards from './components/DashboardCards';
 import ChartsSection from './components/ChartsSection';
 import FilePreview from './components/FilePreview';
-import ExportButton from './components/ExportButton';
 import ToastContainer from './components/ToastContainer';
 import HistoryPage from './components/HistoryPage';
 import { parseFile } from './utils/fileParser';
+import { generateExcelReport } from './services/excelService';
 import { useToast } from './hooks/useToast';
 import { saveReport, getAllReports, updateReport, deleteReport, renameReport } from './utils/historyDb';
 
-const Section = ({ title, icon, children }) => (
-  <div>
-    {title && (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-        {icon && <span style={{ fontSize: 16 }}>{icon}</span>}
-        <h2 style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 16, color: 'var(--text-primary)' }}>{title}</h2>
-        <div style={{ flex: 1, height: 1, background: 'var(--border)', marginLeft: 8 }} />
-      </div>
-    )}
-    {children}
-  </div>
-);
-
 export default function App() {
-  const [activeTab, setActiveTab] = useState('generator');
-  const [data, setData] = useState(null);
-  const [fileName, setFileName] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [activeTab, setActiveTab]           = useState('generator');
+  const [data, setData]                     = useState(null);
+  const [fileName, setFileName]             = useState('');
+  const [isLoading, setIsLoading]           = useState(false);
   const [validationError, setValidationError] = useState(null);
   const [activeHistoryId, setActiveHistoryId] = useState(null);
-  const [reports, setReports] = useState([]);
-  const { toasts, addToast, removeToast } = useToast();
+  const [reports, setReports]               = useState([]);
+  const [exportState, setExportState]       = useState('idle'); // 'idle' | 'loading' | 'done'
+  const { toasts, addToast, removeToast }   = useToast();
 
   const fetchReports = useCallback(async () => {
-    try {
-      const all = await getAllReports();
-      setReports(all);
-    } catch (err) {
-      console.error('Failed to load history:', err);
-    }
+    try { setReports(await getAllReports()); } catch (err) { console.error(err); }
   }, []);
 
-  useEffect(() => {
-    fetchReports();
-  }, [fetchReports]);
+  useEffect(() => { fetchReports(); }, [fetchReports]);
 
+  /* ── File load ──────────────────────────────── */
   const handleFile = useCallback(async (file) => {
     setIsLoading(true);
     setValidationError(null);
@@ -61,13 +43,10 @@ export default function App() {
       } else {
         setData(result.data);
         setFileName(file.name);
-        
-        // Save to IndexedDB history
         const savedId = await saveReport(file.name, result.data);
         setActiveHistoryId(savedId);
         fetchReports();
-
-        addToast('Loaded & saved ' + result.data.length + ' test cases from "' + file.name + '"', 'success');
+        addToast(`Loaded ${result.data.length} test cases from "${file.name}"`, 'success');
       }
     } catch (err) {
       addToast(err.message || 'Failed to parse file.', 'error');
@@ -76,363 +55,273 @@ export default function App() {
     }
   }, [addToast, fetchReports]);
 
+  /* ── Row updates ────────────────────────────── */
   const handleUpdateRow = useCallback(async (index, updatedRow) => {
     if (!data) return;
     const newData = [...data];
     newData[index] = updatedRow;
     setData(newData);
-
     if (activeHistoryId) {
-      try {
-        await updateReport(activeHistoryId, newData);
-        fetchReports(); // Update timestamp in UI
-      } catch (err) {
-        console.error('Failed to auto-save changes:', err);
-      }
+      try { await updateReport(activeHistoryId, newData); fetchReports(); }
+      catch (err) { console.error('Auto-save failed:', err); }
     }
   }, [data, activeHistoryId, fetchReports]);
 
   const handleUpdateRowsBulk = useCallback(async (updates) => {
     if (!data || !updates.length) return;
     const newData = [...data];
-    updates.forEach(({ index, updatedRow }) => {
-      newData[index] = updatedRow;
-    });
+    updates.forEach(({ index, updatedRow }) => { newData[index] = updatedRow; });
     setData(newData);
-
     if (activeHistoryId) {
-      try {
-        await updateReport(activeHistoryId, newData);
-        fetchReports();
-      } catch (err) {
-        console.error('Failed to auto-save bulk changes:', err);
-      }
+      try { await updateReport(activeHistoryId, newData); fetchReports(); }
+      catch (err) { console.error('Auto-save failed:', err); }
     }
   }, [data, activeHistoryId, fetchReports]);
 
+  /* ── Row deletion ───────────────────────────── */
+  const reindex = (arr) => arr.map((row, i) => ({ ...row, 'Sr No': String(i + 1) }));
+
   const handleDeleteRow = useCallback(async (index) => {
     if (!data) return;
-
-    const newData = data.filter((_, idx) => idx !== index);
-    // Re-index Sr No sequentially
-    newData.forEach((row, idx) => {
-      row['Sr No'] = (idx + 1).toString();
-    });
-
+    const newData = reindex(data.filter((_, i) => i !== index));
     setData(newData);
-
     if (activeHistoryId) {
-      try {
-        await updateReport(activeHistoryId, newData);
-        fetchReports();
-        addToast('Test case deleted successfully', 'success');
-      } catch (err) {
-        console.error('Failed to auto-save deletion:', err);
-      }
-    } else {
-      addToast('Test case deleted successfully', 'success');
-    }
+      try { await updateReport(activeHistoryId, newData); fetchReports(); addToast('Test case deleted.', 'success'); }
+      catch (err) { console.error(err); }
+    } else { addToast('Test case deleted.', 'success'); }
   }, [data, activeHistoryId, fetchReports, addToast]);
 
   const handleDeleteRowsBulk = useCallback(async (indices) => {
     if (!data || !indices.length) return;
-    const newData = data.filter((_, idx) => !indices.includes(idx));
-    // Re-index Sr No sequentially
-    newData.forEach((row, idx) => {
-      row['Sr No'] = (idx + 1).toString();
-    });
-
+    const newData = reindex(data.filter((_, i) => !indices.includes(i)));
     setData(newData);
-
     if (activeHistoryId) {
-      try {
-        await updateReport(activeHistoryId, newData);
-        fetchReports();
-        addToast(`Deleted ${indices.length} test cases successfully`, 'success');
-      } catch (err) {
-        console.error('Failed to auto-save bulk deletion:', err);
-      }
-    } else {
-      addToast(`Deleted ${indices.length} test cases successfully`, 'success');
-    }
+      try { await updateReport(activeHistoryId, newData); fetchReports(); addToast(`Deleted ${indices.length} test cases.`, 'success'); }
+      catch (err) { console.error(err); }
+    } else { addToast(`Deleted ${indices.length} test cases.`, 'success'); }
   }, [data, activeHistoryId, fetchReports, addToast]);
 
+  /* ── Row addition ───────────────────────────── */
+  const handleAddRow = useCallback(async (newRow, insertIndex) => {
+    if (!data) return;
+    const newData = reindex([...data.slice(0, insertIndex), newRow, ...data.slice(insertIndex)]);
+    setData(newData);
+    if (activeHistoryId) {
+      try { await updateReport(activeHistoryId, newData); fetchReports(); addToast('Test case added.', 'success'); }
+      catch (err) { console.error(err); }
+    } else { addToast('Test case added.', 'success'); }
+  }, [data, activeHistoryId, fetchReports, addToast]);
+
+  /* ── Merge ──────────────────────────────────── */
   const handleMergeFile = useCallback(async (file) => {
     if (!data) return;
     setIsLoading(true);
     try {
       const result = await parseFile(file);
-      if (!result.valid) {
-        addToast('Merge failed: New file missing required columns.', 'error');
-        return;
-      }
-
-      const incoming = result.data;
-      const mergedData = [...data];
-      let updatedCount = 0;
-      let addedCount = 0;
-
-      incoming.forEach((newRow) => {
-        const newId = newRow['Test Case ID']?.toString().trim().toLowerCase();
-        if (!newId) {
-          // If no test case ID, append it
-          mergedData.push(newRow);
-          addedCount++;
-          return;
-        }
-
-        const matchIdx = mergedData.findIndex(
-          (row) => row['Test Case ID']?.toString().trim().toLowerCase() === newId
-        );
-
-        if (matchIdx !== -1) {
-          mergedData[matchIdx] = {
-            ...mergedData[matchIdx],
-            ...newRow,
-            'Sr No': mergedData[matchIdx]['Sr No'], // keep original Sr No
-          };
-          updatedCount++;
-        } else {
-          mergedData.push(newRow);
-          addedCount++;
-        }
+      if (!result.valid) { addToast('Merge failed: missing required columns.', 'error'); return; }
+      const merged = [...data];
+      let updated = 0, added = 0;
+      result.data.forEach(row => {
+        const id = row['Test Case ID']?.toString().trim().toLowerCase();
+        if (!id) { merged.push(row); added++; return; }
+        const idx = merged.findIndex(r => r['Test Case ID']?.toString().trim().toLowerCase() === id);
+        if (idx !== -1) { merged[idx] = { ...merged[idx], ...row, 'Sr No': merged[idx]['Sr No'] }; updated++; }
+        else { merged.push(row); added++; }
       });
-
-      // Re-index Sr No sequentially
-      mergedData.forEach((row, idx) => {
-        row['Sr No'] = (idx + 1).toString();
-      });
-
-      setData(mergedData);
-
-      if (activeHistoryId) {
-        await updateReport(activeHistoryId, mergedData);
-        fetchReports();
-      }
-
-      addToast(`Merged successfully! ${updatedCount} rows updated, ${addedCount} rows added.`, 'success');
+      const newData = reindex(merged);
+      setData(newData);
+      if (activeHistoryId) { await updateReport(activeHistoryId, newData); fetchReports(); }
+      addToast(`Merged: ${updated} updated, ${added} added.`, 'success');
     } catch (err) {
-      addToast(err.message || 'Failed to merge file.', 'error');
-    } finally {
-      setIsLoading(false);
-    }
+      addToast(err.message || 'Failed to merge.', 'error');
+    } finally { setIsLoading(false); }
   }, [data, activeHistoryId, addToast, fetchReports]);
 
+  /* ── Export ─────────────────────────────────── */
+  const doExport = useCallback(async (isGoogleSheets) => {
+    if (!data?.length || exportState === 'loading') return;
+    setExportState('loading');
+    try {
+      await generateExcelReport(data, null, isGoogleSheets, fileName);
+      setExportState('done');
+      addToast('Report downloaded successfully!', 'success');
+      setTimeout(() => setExportState('idle'), 2800);
+    } catch (err) {
+      setExportState('idle');
+      addToast('Export failed: ' + err.message, 'error');
+    }
+  }, [data, fileName, exportState, addToast]);
+
+  const handleExcelExport   = useCallback(() => doExport(false), [doExport]);
+  const handleGSheetsExport = useCallback(() => doExport(true),  [doExport]);
+
+  /* ── History item actions ───────────────────── */
   const handleEditHistoryItem = useCallback((item) => {
-    setData(item.data);
-    setFileName(item.fileName);
-    setActiveHistoryId(item.id);
-    setActiveTab('generator');
-    addToast('Loaded "' + item.fileName + '" for editing.', 'info');
+    setData(item.data); setFileName(item.fileName);
+    setActiveHistoryId(item.id); setActiveTab('generator');
+    addToast(`Loaded "${item.fileName}" for editing.`, 'info');
   }, [addToast]);
 
   const handleDeleteHistoryItem = useCallback(async (id) => {
-    if (confirm('Are you sure you want to delete this report from your history?')) {
+    if (confirm('Delete this report from history?')) {
       try {
-        await deleteReport(id);
-        fetchReports();
-        if (activeHistoryId === id) {
-          setData(null);
-          setFileName('');
-          setActiveHistoryId(null);
-        }
-        addToast('Report deleted from history.', 'success');
-      } catch (err) {
-        addToast('Failed to delete: ' + err.message, 'error');
-      }
+        await deleteReport(id); fetchReports();
+        if (activeHistoryId === id) { setData(null); setFileName(''); setActiveHistoryId(null); }
+        addToast('Report deleted.', 'success');
+      } catch (err) { addToast('Failed: ' + err.message, 'error'); }
     }
   }, [activeHistoryId, fetchReports, addToast]);
 
   const handleRenameHistoryItem = useCallback(async (id, newName) => {
     try {
-      await renameReport(id, newName);
-      await fetchReports();
-      addToast('Report renamed to "' + newName + '"', 'success');
-      if (activeHistoryId === id) {
-        setFileName(newName);
-      }
-    } catch (err) {
-      addToast('Failed to rename: ' + err.message, 'error');
-    }
+      await renameReport(id, newName); await fetchReports();
+      addToast(`Renamed to "${newName}"`, 'success');
+      if (activeHistoryId === id) setFileName(newName);
+    } catch (err) { addToast('Rename failed: ' + err.message, 'error'); }
   }, [activeHistoryId, fetchReports, addToast]);
 
   const handleReset = () => {
-    setData(null);
-    setFileName('');
-    setValidationError(null);
-    setActiveHistoryId(null);
+    setData(null); setFileName(''); setValidationError(null); setActiveHistoryId(null);
   };
 
+  /* ── Render ──────────────────────────────────── */
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>
-      <Header hasData={!!data} activeTab={activeTab} setActiveTab={setActiveTab} historyCount={reports.length} />
-      <main style={{ maxWidth: '100%', margin: '0 auto', padding: '32px 40px 80px' }}>
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
+      {/* Header */}
+      <Header
+        hasData={!!data}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        historyCount={reports.length}
+        data={data}
+        onExcelExport={handleExcelExport}
+        onGSheetsExport={handleGSheetsExport}
+        exportState={exportState}
+      />
+
+      {/* Body */}
+      <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden' }}>
         <AnimatePresence mode="wait">
+
           {activeTab === 'generator' ? (
             <motion.div
-              key="generator-view"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              style={{ display: 'flex', flexDirection: 'column', gap: 28 }}
+              key="generator"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden' }}
             >
-              <div style={{ textAlign: 'center', marginBottom: 20, paddingTop: 16 }}>
-                <div style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 16px',
-                  borderRadius: 20, border: '1px solid var(--border)', background: 'var(--bg-card)',
-                  marginBottom: 20, fontSize: 12, color: 'var(--text-muted)', fontFamily: 'DM Mono, monospace',
-                }}>
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent-green)', display: 'inline-block' }} />
-                  100% client-side · No backend · Offline database saved
-                </div>
-                <h1 style={{
-                  fontFamily: 'Syne, sans-serif', fontWeight: 800,
-                  fontSize: 'clamp(28px, 5vw, 48px)', color: 'var(--text-primary)',
-                  lineHeight: 1.1, marginBottom: 14,
-                }}>
-                  QA Report{' '}
-                  <span style={{
-                    background: 'linear-gradient(90deg, var(--accent-cyan), var(--accent-purple))',
-                    WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-                  }}>Generator</span>
-                </h1>
-                <p style={{ color: 'var(--text-secondary)', fontSize: 16, maxWidth: 520, margin: '0 auto' }}>
-                  Transform your QA test case sheets into professional Excel reports with dashboards, charts, and rich formatting — in seconds.
-                </p>
-              </div>
+              {/* Sidebar */}
+              <Sidebar
+                data={data}
+                fileName={fileName}
+                isLoading={isLoading}
+                onFile={handleFile}
+                onReset={handleReset}
+                activeHistoryId={activeHistoryId}
+              />
 
+              {/* Main panel */}
               <div style={{
-                display: 'grid',
-                gridTemplateColumns: data ? '1fr 340px' : '1fr',
-                gap: 24, alignItems: 'start',
+                flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column',
+                overflow: 'hidden', padding: '16px 20px 16px 16px', gap: 12,
               }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
-                  <Section>
-                    <AnimatePresence>
-                      {validationError && (
-                        <motion.div key="valerr" style={{ marginBottom: 16 }}>
-                          <ValidationAlert missing={validationError} onDismiss={() => setValidationError(null)} />
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                    {!data ? (
-                      <UploadBox onFile={handleFile} isLoading={isLoading} />
-                    ) : (
-                      <div style={{
-                        background: 'var(--bg-card)', border: '1px solid var(--border)',
-                        borderRadius: 12, padding: '14px 20px',
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <span style={{ fontSize: 20 }}>📊</span>
-                          <div>
-                            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{fileName}</p>
-                            <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                              {data.length} rows loaded {activeHistoryId && '· Stored in history'}
-                            </p>
-                          </div>
-                        </div>
-                        <button onClick={handleReset} style={{
-                          background: 'var(--bg-secondary)', border: '1px solid var(--border)',
-                          borderRadius: 8, padding: '6px 14px', color: 'var(--text-secondary)',
-                          fontSize: 12, cursor: 'pointer',
-                        }}>
-                          ↺ Change File
-                        </button>
-                      </div>
-                    )}
-                  </Section>
 
-                  {data && (
-                    <>
-                      <Section title="Execution Summary" icon="📊">
-                        <DashboardCards data={data} />
-                      </Section>
-                      <Section title="Analytics" icon="📈">
-                        <ChartsSection data={data} />
-                      </Section>
-                      <Section title="Data Preview" icon="🔍">
-                        <FilePreview
-                          data={data}
-                          fileName={fileName}
-                          onUpdateRow={handleUpdateRow}
-                          onUpdateRowsBulk={handleUpdateRowsBulk}
-                          onDeleteRow={handleDeleteRow}
-                          onDeleteRowsBulk={handleDeleteRowsBulk}
-                          onMergeFile={handleMergeFile}
-                        />
-                      </Section>
-                    </>
+                {/* Validation error */}
+                <AnimatePresence>
+                  {validationError && (
+                    <motion.div key="valerr"
+                      initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                      style={{ flexShrink: 0 }}
+                    >
+                      <ValidationAlert missing={validationError} onDismiss={() => setValidationError(null)} />
+                    </motion.div>
                   )}
-                </div>
+                </AnimatePresence>
 
-                {data && (
-                  <div style={{ position: 'sticky', top: 24 }}>
-                    <div style={{
-                      background: 'var(--bg-card)', border: '1px solid var(--border)',
-                      borderRadius: 16, padding: '24px 20px',
-                    }}>
-                      <h3 style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 15, color: 'var(--text-primary)', marginBottom: 6 }}>
-                        Export Report
-                      </h3>
-                      <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 20 }}>
-                        Generate a professional Excel report with formulas and charts.
-                      </p>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
-                        {[
-                          { icon: '📊', label: 'Dashboard', desc: 'KPIs + Module breakdown' },
-                          { icon: '📋', label: 'Project Details', desc: 'Summary & editable fields' },
-                          { icon: '🧪', label: 'Test Cases', desc: 'All rows with formatting' },
-                          { icon: '📈', label: 'Summary', desc: 'Module-wise stats table' },
-                        ].map(s => (
-                          <div key={s.label} style={{
-                            display: 'flex', alignItems: 'center', gap: 10,
-                            padding: '10px 12px', borderRadius: 8,
-                            background: 'var(--bg-secondary)', border: '1px solid var(--border)',
-                          }}>
-                            <span style={{ fontSize: 14 }}>{s.icon}</span>
-                            <div>
-                              <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>{s.label}</p>
-                              <p style={{ fontSize: 10, color: 'var(--text-muted)' }}>{s.desc}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                      <ExportButton
+                {data ? (
+                  <>
+                    {/* Charts - collapsible */}
+                    <div style={{ flexShrink: 0 }}>
+                      <ChartsSection data={data} />
+                    </div>
+
+                    {/* Table - fills remaining space */}
+                    <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+                      <FilePreview
                         data={data}
                         fileName={fileName}
-                        onSuccess={() => addToast('Report downloaded successfully!', 'success')}
-                        onError={(msg) => addToast('Export failed: ' + msg, 'error')}
+                        onUpdateRow={handleUpdateRow}
+                        onUpdateRowsBulk={handleUpdateRowsBulk}
+                        onDeleteRow={handleDeleteRow}
+                        onDeleteRowsBulk={handleDeleteRowsBulk}
+                        onAddRow={handleAddRow}
+                        onMergeFile={handleMergeFile}
                       />
                     </div>
+                  </>
+                ) : (
+                  /* Welcome screen */
+                  <motion.div
+                    initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+                    style={{
+                      flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      flexDirection: 'column', gap: 16, textAlign: 'center',
+                    }}
+                  >
                     <div style={{
-                      marginTop: 14, padding: '14px 16px',
-                      background: 'rgba(0,212,255,0.05)', border: '1px solid rgba(0,212,255,0.15)', borderRadius: 12,
-                    }}>
-                      <p style={{ fontSize: 11, color: 'var(--accent-cyan)', fontWeight: 600, marginBottom: 4 }}>💡 Tip</p>
-                      <p style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.5 }}>
-                        Modifying cell values (statuses, severities, comments) in the Data Preview above will auto-save the changes locally.
+                      width: 80, height: 80, borderRadius: 24,
+                      background: 'linear-gradient(135deg, rgba(14,165,233,0.12), rgba(124,58,237,0.12))',
+                      border: '1px solid rgba(14,165,233,0.2)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}><TestTube2 size={36} strokeWidth={1.5} color="var(--accent-cyan)" /></div>
+                    <div>
+                      <h1 style={{
+                        fontFamily: 'Syne', fontWeight: 800, fontSize: 28,
+                        color: 'var(--text-primary)', marginBottom: 8,
+                        background: 'linear-gradient(135deg, #0284c7, #7c3aed)',
+                        WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+                      }}>QA Report Generator</h1>
+                      <p style={{ color: 'var(--text-secondary)', fontSize: 15, maxWidth: 400, lineHeight: 1.6 }}>
+                        Upload your QA test case sheet from the sidebar to generate reports, edit data, and export.
                       </p>
                     </div>
-                  </div>
+                    <div style={{ display: 'flex', gap: 20, marginTop: 8 }}>
+                      {[
+                        { icon: <BarChart2 size={22} strokeWidth={1.5} color="var(--accent-cyan)" />, label: 'Smart Dashboard' },
+                      { icon: <Pencil size={22} strokeWidth={1.5} color="var(--accent-purple)" />, label: 'Inline Editing' },
+                      { icon: <Download size={22} strokeWidth={1.5} color="var(--accent-green)" />, label: 'Excel & Sheets Export' },
+                      ].map(f => (
+                        <div key={f.label} style={{
+                          padding: '10px 16px', borderRadius: 'var(--r-md)',
+                          background: 'var(--bg-card)', border: '1px solid var(--border)',
+                          boxShadow: 'var(--shadow-xs)', textAlign: 'center',
+                          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                        }}>
+                          <span style={{ fontSize: 22 }}>{f.icon}</span>
+                          <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)' }}>{f.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, fontFamily: 'DM Mono' }}>
+                      100% client-side · No backend · Auto-saved to IndexedDB
+                    </p>
+                  </motion.div>
                 )}
               </div>
-
-              {!data && !isLoading && (
-                <div style={{ marginTop: 40, textAlign: 'center' }}>
-                  <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                    Expected: Sr No · Module · Test Case ID · Test Type · Test Scenario · Simplified Test Scenario · Test Steps · Expected Result · Actual Result · Priority · Severity · Status · Tested By · Execution Date · Defect No. · Defect ID · QA Comments
-                  </p>
-                </div>
-              )}
             </motion.div>
+
           ) : (
+            /* History Tab */
             <motion.div
-              key="history-view"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
+              key="history"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              style={{ flex: 1, overflow: 'auto', padding: '24px 32px' }}
             >
               <HistoryPage
                 reports={reports}
@@ -444,7 +333,8 @@ export default function App() {
             </motion.div>
           )}
         </AnimatePresence>
-      </main>
+      </div>
+
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );

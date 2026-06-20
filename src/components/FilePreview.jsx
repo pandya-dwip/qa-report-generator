@@ -1,5 +1,9 @@
 import { useState, useMemo, useRef, useLayoutEffect, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import {
+  Plus, Trash2, GitMerge, Eye, Search, Zap, AlertTriangle,
+  TestTube2, X, MapPin,
+} from 'lucide-react';
 import { REQUIRED_COLUMNS, PAGE_SIZE } from '../constants';
 
 function getColWidth(col) {
@@ -177,19 +181,15 @@ function EditablePriority({ row, data, onUpdateRow }) {
   );
 }
 
+// Trash2 and Plus come from lucide-react (imported above)
 function TrashIcon({ size = 16, color = 'currentColor' }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 6h18" />
-      <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-      <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-      <line x1="10" y1="11" x2="10" y2="17" />
-      <line x1="14" y1="11" x2="14" y2="17" />
-    </svg>
-  );
+  return <Trash2 size={size} color={color} strokeWidth={1.75} />;
+}
+function PlusIcon({ size = 16, color = 'currentColor' }) {
+  return <Plus size={size} color={color} strokeWidth={2} />;
 }
 
-export default function FilePreview({ data, fileName, onUpdateRow, onUpdateRowsBulk, onDeleteRow, onDeleteRowsBulk, onMergeFile }) {
+export default function FilePreview({ data, fileName, onUpdateRow, onUpdateRowsBulk, onDeleteRow, onDeleteRowsBulk, onAddRow, onMergeFile }) {
   const [search, setSearch] = useState('');
   const [pageSize, setPageSize] = useState(PAGE_SIZE);
   const [page, setPage] = useState(1);
@@ -197,7 +197,30 @@ export default function FilePreview({ data, fileName, onUpdateRow, onUpdateRowsB
   const [sortDir, setSortDir] = useState('asc');
   const [statusFilter, setStatusFilter] = useState('');
   const [selectedIdxs, setSelectedIdxs] = useState([]);
+  const selectedRow = useMemo(() => {
+    return selectedIdxs.length === 1 ? data[selectedIdxs[0]] : null;
+  }, [selectedIdxs, data]);
   const [deleteTarget, setDeleteTarget] = useState(null); // { type: 'single' | 'bulk', index?: number, indices?: number[] }
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [insertConfig, setInsertConfig] = useState({ positionType: 'end', relativeSrNo: '1' });
+  const [newRowData, setNewRowData] = useState({
+    Module: '',
+    'Test Case ID': '',
+    'Test Type': 'Functional',
+    'Test Scenario': '',
+    'Simplified Test Scenario': '',
+    'Test Steps': '',
+    'Expected Result': '',
+    'Actual Result': '',
+    Priority: 'MEDIUM',
+    Severity: 'MEDIUM',
+    Status: 'NOT EXECUTED',
+    'Tested By': 'Dwip Pandya',
+    'Execution Date': new Date().toISOString().slice(0, 10),
+    'Defect No. / Bug No.': '',
+    'Defect ID': '',
+    'QA Comments': '',
+  });
 
   const DEFAULT_HIDDEN = useMemo(() => ['Test Type', 'Test Case ID', 'Test Steps', 'Priority', 'Severity'], []);
   const [visibleCols, setVisibleCols] = useState(() => {
@@ -260,22 +283,28 @@ export default function FilePreview({ data, fileName, onUpdateRow, onUpdateRowsB
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 24 }}
-      animate={{ opacity: 1, y: 0 }}
-      style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden' }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      style={{
+        height: '100%', display: 'flex', flexDirection: 'column',
+        background: 'var(--bg-card)', border: '1px solid var(--border)',
+        borderRadius: 'var(--r-lg)', overflow: 'hidden',
+        boxShadow: 'var(--shadow-sm)',
+      }}
     >
       {/* Table header controls */}
       <div style={{
-        padding: '16px 20px',
+        padding: '10px 14px',
         borderBottom: '1px solid var(--border)',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap',
+        flexShrink: 0, background: 'var(--bg-card)',
       }}>
         <div>
           {selectedIdxs.length > 0 ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div>
-                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent-cyan)', display: 'block' }}>
-                  ⚡ {selectedIdxs.length} row{selectedIdxs.length > 1 ? 's' : ''} selected
+                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent-cyan)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <Zap size={12} strokeWidth={2.5} /> {selectedIdxs.length} row{selectedIdxs.length > 1 ? 's' : ''} selected
                 </span>
                 <button
                   onClick={() => setSelectedIdxs([])}
@@ -304,6 +333,45 @@ export default function FilePreview({ data, fileName, onUpdateRow, onUpdateRowsB
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           {selectedIdxs.length > 0 ? (
             <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              {selectedIdxs.length === 1 && (
+                <button
+                  onClick={() => {
+                    const row = selectedRow || data[0] || {};
+                    setInsertConfig({ positionType: 'after', relativeSrNo: row['Sr No'] || '1' });
+                    setNewRowData({
+                      Module: row['Module'] || '',
+                      'Test Case ID': '',
+                      'Test Type': row['Test Type'] || 'Functional',
+                      'Test Scenario': '',
+                      'Simplified Test Scenario': '',
+                      'Test Steps': '',
+                      'Expected Result': '',
+                      'Actual Result': '',
+                      Priority: 'MEDIUM',
+                      Severity: 'MEDIUM',
+                      Status: 'NOT EXECUTED',
+                      'Tested By': 'Dwip Pandya',
+                      'Execution Date': new Date().toISOString().slice(0, 10),
+                      'Defect No. / Bug No.': '',
+                      'Defect ID': '',
+                      'QA Comments': '',
+                    });
+                    setShowAddModal(true);
+                  }}
+                  style={{
+                    background: 'linear-gradient(135deg, var(--accent-cyan), var(--accent-purple))',
+                    border: 'none',
+                    borderRadius: 8, color: '#fff', fontSize: 12,
+                    padding: '7px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+                    transition: 'opacity 0.2s', fontWeight: 600,
+                    boxShadow: '0 2px 4px rgba(2,132,199,0.15)',
+                  }}
+                  onMouseOver={(e) => e.currentTarget.style.opacity = '0.9'}
+                  onMouseOut={(e) => e.currentTarget.style.opacity = '1'}
+                >
+                  <PlusIcon size={14} color="#fff" /> Add Test Case
+                </button>
+              )}
               <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600 }}>Bulk Status:</span>
               <select
                 value=""
@@ -350,6 +418,44 @@ export default function FilePreview({ data, fileName, onUpdateRow, onUpdateRowsB
             </div>
           ) : (
             <>
+              {/* Add Test Case */}
+              <button
+                onClick={() => {
+                  setInsertConfig({ positionType: 'end', relativeSrNo: '1' });
+                  setNewRowData({
+                    Module: '',
+                    'Test Case ID': '',
+                    'Test Type': 'Functional',
+                    'Test Scenario': '',
+                    'Simplified Test Scenario': '',
+                    'Test Steps': '',
+                    'Expected Result': '',
+                    'Actual Result': '',
+                    Priority: 'MEDIUM',
+                    Severity: 'MEDIUM',
+                    Status: 'NOT EXECUTED',
+                    'Tested By': 'Dwip Pandya',
+                    'Execution Date': new Date().toISOString().slice(0, 10),
+                    'Defect No. / Bug No.': '',
+                    'Defect ID': '',
+                    'QA Comments': '',
+                  });
+                  setShowAddModal(true);
+                }}
+                style={{
+                  background: 'linear-gradient(135deg, var(--accent-cyan), var(--accent-purple))',
+                  border: 'none',
+                  borderRadius: 8, color: '#fff', fontSize: 12,
+                  padding: '7px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+                  transition: 'opacity 0.2s', fontWeight: 600,
+                  boxShadow: '0 2px 4px rgba(2,132,199,0.15)',
+                }}
+                onMouseOver={(e) => e.currentTarget.style.opacity = '0.9'}
+                onMouseOut={(e) => e.currentTarget.style.opacity = '1'}
+              >
+                <PlusIcon size={14} color="#fff" /> Add Test Case
+              </button>
+
               {/* Upload New to Merge */}
               <button
                 onClick={() => document.getElementById('merge-file-input').click()}
@@ -362,7 +468,7 @@ export default function FilePreview({ data, fileName, onUpdateRow, onUpdateRowsB
                 onMouseOver={(e) => e.currentTarget.style.borderColor = 'var(--accent-cyan)'}
                 onMouseOut={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
               >
-                🔗 Merge New Sheet
+                <GitMerge size={14} strokeWidth={2} /> Merge Sheet
               </button>
               <input
                 id="merge-file-input"
@@ -385,7 +491,7 @@ export default function FilePreview({ data, fileName, onUpdateRow, onUpdateRowsB
                   onMouseOver={(e) => e.currentTarget.style.borderColor = 'var(--accent-cyan)'}
                   onMouseOut={(e) => e.currentTarget.style.borderColor = showColSelector ? 'var(--accent-cyan)' : 'var(--border)'}
                 >
-                  👁️ View Columns
+                  <Eye size={14} strokeWidth={2} /> Columns
                 </button>
                 {showColSelector && (
                   <>
@@ -464,7 +570,7 @@ export default function FilePreview({ data, fileName, onUpdateRow, onUpdateRowsB
 
               {/* Search */}
               <div style={{ position: 'relative' }}>
-                <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: 'var(--text-muted)' }}>🔍</span>
+                <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}><Search size={13} strokeWidth={2} /></span>
                 <input
                   value={search}
                   onChange={handleSearch}
@@ -481,8 +587,8 @@ export default function FilePreview({ data, fileName, onUpdateRow, onUpdateRowsB
         </div>
       </div>
 
-      {/* Table */}
-      <div style={{ overflowX: 'auto', maxHeight: '600px', overflowY: 'auto', position: 'relative' }}>
+      {/* Table — fills remaining flex space */}
+      <div style={{ flex: 1, minHeight: 0, overflow: 'auto', position: 'relative' }}>
         <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr>
@@ -577,25 +683,27 @@ export default function FilePreview({ data, fileName, onUpdateRow, onUpdateRowsB
                     );
                   })}
                   <td style={{ width: 60, textAlign: 'center', padding: '6px 8px', verticalAlign: 'middle' }}>
-                    <button
-                      onClick={() => setDeleteTarget({ type: 'single', index: globalIdx })}
-                      title="Delete Test Case"
-                      style={{
-                        background: 'transparent', border: 'none', color: '#94a3b8',
-                        cursor: 'pointer', padding: '6px', borderRadius: 6,
-                        transition: 'all 0.15s', display: 'inline-flex', alignItems: 'center', justifyContent: 'center'
-                      }}
-                      onMouseOver={(e) => {
-                        e.currentTarget.style.background = 'rgba(239, 68, 68, 0.08)';
-                        e.currentTarget.style.color = '#ef4444';
-                      }}
-                      onMouseOut={(e) => {
-                        e.currentTarget.style.background = 'transparent';
-                        e.currentTarget.style.color = '#94a3b8';
-                      }}
-                    >
-                      <TrashIcon size={15} />
-                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <button
+                        onClick={() => setDeleteTarget({ type: 'single', index: globalIdx })}
+                        title="Delete Test Case"
+                        style={{
+                          background: 'transparent', border: 'none', color: '#94a3b8',
+                          cursor: 'pointer', padding: '6px', borderRadius: 6,
+                          transition: 'all 0.15s', display: 'inline-flex', alignItems: 'center', justifyContent: 'center'
+                        }}
+                        onMouseOver={(e) => {
+                          e.currentTarget.style.background = 'rgba(239, 68, 68, 0.08)';
+                          e.currentTarget.style.color = '#ef4444';
+                        }}
+                        onMouseOut={(e) => {
+                          e.currentTarget.style.background = 'transparent';
+                          e.currentTarget.style.color = '#94a3b8';
+                        }}
+                      >
+                        <TrashIcon size={15} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );
@@ -607,9 +715,10 @@ export default function FilePreview({ data, fileName, onUpdateRow, onUpdateRowsB
       {/* Pagination */}
       {filtered.length > 0 && (
         <div style={{
-          padding: '12px 20px', borderTop: '1px solid var(--border)',
+          padding: '8px 14px', borderTop: '1px solid var(--border)',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          flexWrap: 'wrap', gap: 12,
+          flexWrap: 'wrap', gap: 8, flexShrink: 0,
+          background: 'var(--bg-card)',
         }}>
           {totalPages > 1 ? (
             <div style={{ display: 'flex', gap: 6 }}>
@@ -677,7 +786,7 @@ export default function FilePreview({ data, fileName, onUpdateRow, onUpdateRowsB
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-              <span style={{ fontSize: 22 }}>⚠️</span>
+              <AlertTriangle size={20} strokeWidth={2} color="var(--accent-red)" />
               <h4 style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 16, color: 'var(--text-primary)', margin: 0 }}>
                 Confirm Deletion
               </h4>
@@ -716,6 +825,327 @@ export default function FilePreview({ data, fileName, onUpdateRow, onUpdateRowsB
                 }}
               >
                 Delete
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {showAddModal && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.3)',
+          backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center',
+          justifyContent: 'center', zIndex: 9999,
+        }}>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            style={{
+              background: 'var(--bg-card)', border: '1px solid var(--border)',
+              borderRadius: 16, padding: '24px', width: '95%', maxWidth: 700,
+              boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)',
+              maxHeight: '90vh', display: 'flex', flexDirection: 'column',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, borderBottom: '1px solid var(--border)', paddingBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <TestTube2 size={20} strokeWidth={1.75} color="var(--accent-cyan)" />
+                <h3 style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 18, color: 'var(--text-primary)', margin: 0 }}>
+                  Add New Test Case
+                </h3>
+              </div>
+              <button 
+                onClick={() => setShowAddModal(false)}
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', fontSize: 18, cursor: 'pointer' }}
+              >
+                <X size={18} strokeWidth={2} color="var(--text-muted)" />
+              </button>
+            </div>
+
+            <div style={{ flex: 1, overflowY: 'auto', paddingRight: 6, marginBottom: 20 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                {/* Module & Test Case ID */}
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>Module *</label>
+                  <input
+                    type="text"
+                    value={newRowData.Module}
+                    onChange={(e) => setNewRowData({ ...newRowData, Module: e.target.value })}
+                    placeholder="e.g. Authentication"
+                    style={{ width: '100%', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-primary)', fontSize: 13, padding: '8px 12px', outline: 'none' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>Test Case ID *</label>
+                  <input
+                    type="text"
+                    value={newRowData['Test Case ID']}
+                    onChange={(e) => setNewRowData({ ...newRowData, 'Test Case ID': e.target.value })}
+                    placeholder="e.g. TC101"
+                    style={{ width: '100%', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-primary)', fontSize: 13, padding: '8px 12px', outline: 'none' }}
+                  />
+                </div>
+
+                {/* Test Type & Tested By */}
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>Test Type</label>
+                  <input
+                    type="text"
+                    value={newRowData['Test Type']}
+                    onChange={(e) => setNewRowData({ ...newRowData, 'Test Type': e.target.value })}
+                    placeholder="e.g. Functional"
+                    style={{ width: '100%', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-primary)', fontSize: 13, padding: '8px 12px', outline: 'none' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>Tested By</label>
+                  <input
+                    type="text"
+                    value={newRowData['Tested By']}
+                    onChange={(e) => setNewRowData({ ...newRowData, 'Tested By': e.target.value })}
+                    style={{ width: '100%', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-primary)', fontSize: 13, padding: '8px 12px', outline: 'none' }}
+                  />
+                </div>
+
+                {/* Priority & Severity */}
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>Priority</label>
+                  <select
+                    value={newRowData.Priority}
+                    onChange={(e) => setNewRowData({ ...newRowData, Priority: e.target.value })}
+                    style={{ width: '100%', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-primary)', fontSize: 13, padding: '8px 12px', outline: 'none', cursor: 'pointer' }}
+                  >
+                    <option value="HIGH">HIGH</option>
+                    <option value="MEDIUM">MEDIUM</option>
+                    <option value="LOW">LOW</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>Severity</label>
+                  <select
+                    value={newRowData.Severity}
+                    onChange={(e) => setNewRowData({ ...newRowData, Severity: e.target.value })}
+                    style={{ width: '100%', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-primary)', fontSize: 13, padding: '8px 12px', outline: 'none', cursor: 'pointer' }}
+                  >
+                    <option value="CRITICAL">CRITICAL</option>
+                    <option value="HIGH">HIGH</option>
+                    <option value="MEDIUM">MEDIUM</option>
+                    <option value="LOW">LOW</option>
+                  </select>
+                </div>
+
+                {/* Status & Execution Date */}
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>Status</label>
+                  <select
+                    value={newRowData.Status}
+                    onChange={(e) => setNewRowData({ ...newRowData, Status: e.target.value })}
+                    style={{ width: '100%', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-primary)', fontSize: 13, padding: '8px 12px', outline: 'none', cursor: 'pointer' }}
+                  >
+                    <option value="NOT EXECUTED">NOT EXECUTED</option>
+                    <option value="PASS">PASS</option>
+                    <option value="FAIL">FAIL</option>
+                    <option value="BLOCKED">BLOCKED</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>Execution Date</label>
+                  <input
+                    type="date"
+                    value={newRowData['Execution Date']}
+                    onChange={(e) => setNewRowData({ ...newRowData, 'Execution Date': e.target.value })}
+                    style={{ width: '100%', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-primary)', fontSize: 13, padding: '7px 12px', outline: 'none', cursor: 'pointer' }}
+                  />
+                </div>
+
+                {/* Defect ID & Defect No. / Bug No. */}
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>Defect ID</label>
+                  <input
+                    type="text"
+                    value={newRowData['Defect ID']}
+                    onChange={(e) => setNewRowData({ ...newRowData, 'Defect ID': e.target.value })}
+                    placeholder="e.g. BUG-101"
+                    style={{ width: '100%', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-primary)', fontSize: 13, padding: '8px 12px', outline: 'none' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>Defect No. / Bug No.</label>
+                  <input
+                    type="text"
+                    value={newRowData['Defect No. / Bug No.']}
+                    onChange={(e) => setNewRowData({ ...newRowData, 'Defect No. / Bug No.': e.target.value })}
+                    placeholder="e.g. BUG-101"
+                    style={{ width: '100%', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-primary)', fontSize: 13, padding: '8px 12px', outline: 'none' }}
+                  />
+                </div>
+
+                {/* Test Scenario (Full width) */}
+                <div style={{ gridColumn: 'span 2' }}>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>Test Scenario</label>
+                  <textarea
+                    value={newRowData['Test Scenario']}
+                    onChange={(e) => setNewRowData({ ...newRowData, 'Test Scenario': e.target.value })}
+                    placeholder="Describe the test scenario details..."
+                    rows={2}
+                    style={{ width: '100%', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-primary)', fontSize: 13, padding: '8px 12px', outline: 'none', resize: 'vertical' }}
+                  />
+                </div>
+
+                {/* Simplified Test Scenario (Full width) */}
+                <div style={{ gridColumn: 'span 2' }}>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>Simplified Test Scenario</label>
+                  <textarea
+                    value={newRowData['Simplified Test Scenario']}
+                    onChange={(e) => setNewRowData({ ...newRowData, 'Simplified Test Scenario': e.target.value })}
+                    placeholder="A simplified overview..."
+                    rows={2}
+                    style={{ width: '100%', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-primary)', fontSize: 13, padding: '8px 12px', outline: 'none', resize: 'vertical' }}
+                  />
+                </div>
+
+                {/* Test Steps (Full width) */}
+                <div style={{ gridColumn: 'span 2' }}>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>Test Steps</label>
+                  <textarea
+                    value={newRowData['Test Steps']}
+                    onChange={(e) => setNewRowData({ ...newRowData, 'Test Steps': e.target.value })}
+                    placeholder="Step 1. ...&#10;Step 2. ..."
+                    rows={3}
+                    style={{ width: '100%', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-primary)', fontSize: 13, padding: '8px 12px', outline: 'none', resize: 'vertical' }}
+                  />
+                </div>
+
+                {/* Expected & Actual Results */}
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>Expected Result</label>
+                  <textarea
+                    value={newRowData['Expected Result']}
+                    onChange={(e) => setNewRowData({ ...newRowData, 'Expected Result': e.target.value })}
+                    rows={3}
+                    style={{ width: '100%', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-primary)', fontSize: 13, padding: '8px 12px', outline: 'none', resize: 'vertical' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>Actual Result</label>
+                  <textarea
+                    value={newRowData['Actual Result']}
+                    onChange={(e) => setNewRowData({ ...newRowData, 'Actual Result': e.target.value })}
+                    rows={3}
+                    style={{ width: '100%', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-primary)', fontSize: 13, padding: '8px 12px', outline: 'none', resize: 'vertical' }}
+                  />
+                </div>
+
+                {/* QA Comments */}
+                <div style={{ gridColumn: 'span 2' }}>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>QA Comments</label>
+                  <textarea
+                    value={newRowData['QA Comments']}
+                    onChange={(e) => setNewRowData({ ...newRowData, 'QA Comments': e.target.value })}
+                    rows={2}
+                    style={{ width: '100%', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-primary)', fontSize: 13, padding: '8px 12px', outline: 'none', resize: 'vertical' }}
+                  />
+                </div>
+
+                {/* INSERTION POSITION SETTING */}
+                <div style={{ gridColumn: 'span 2', background: 'var(--bg-secondary)', padding: '14px 16px', borderRadius: 10, marginTop: 8, border: '1px solid var(--border)' }}>
+                  <h4 style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}><MapPin size={13} strokeWidth={2} color="var(--accent-cyan)" /> Insertion Position</h4>
+                  <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Insert:</span>
+                      <select
+                        value={insertConfig.positionType}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setInsertConfig(prev => ({
+                            ...prev,
+                            positionType: val,
+                            relativeSrNo: selectedRow ? selectedRow['Sr No'] : prev.relativeSrNo
+                          }));
+                        }}
+                        style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text-primary)', fontSize: 12, padding: '4px 8px', outline: 'none', cursor: 'pointer' }}
+                      >
+                        {selectedRow ? (
+                          <>
+                            <option value="after">Below Selected Row (Sr No {selectedRow['Sr No']})</option>
+                            <option value="before">Above Selected Row (Sr No {selectedRow['Sr No']})</option>
+                            <option value="end">At the end of the sheet</option>
+                            <option value="start">At the beginning of the sheet</option>
+                          </>
+                        ) : (
+                          <>
+                            <option value="end">At the end of the sheet</option>
+                            <option value="start">At the beginning of the sheet</option>
+                            <option value="before">Before Row (Sr No)</option>
+                            <option value="after">After Row (Sr No)</option>
+                          </>
+                        )}
+                      </select>
+                    </div>
+
+                    {!selectedRow && (insertConfig.positionType === 'before' || insertConfig.positionType === 'after') && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Row Number:</span>
+                        <input
+                          type="number"
+                          min="1"
+                          max={data.length}
+                          value={insertConfig.relativeSrNo}
+                          onChange={(e) => setInsertConfig({ ...insertConfig, relativeSrNo: e.target.value })}
+                          style={{ width: 70, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text-primary)', fontSize: 12, padding: '4px 8px', outline: 'none' }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            {/* Footer Buttons */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
+              <button
+                onClick={() => setShowAddModal(false)}
+                style={{
+                  background: 'var(--bg-secondary)', border: '1px solid var(--border)',
+                  borderRadius: 8, color: 'var(--text-secondary)', fontSize: 12,
+                  padding: '8px 16px', cursor: 'pointer', fontWeight: 600,
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (!newRowData.Module.trim() || !newRowData['Test Case ID'].trim()) {
+                    alert('Module and Test Case ID are required fields.');
+                    return;
+                  }
+
+                  // Resolve insertion index
+                  let resolvedIdx = data.length;
+                  if (insertConfig.positionType === 'start') {
+                    resolvedIdx = 0;
+                  } else if (insertConfig.positionType === 'before') {
+                    const sr = parseInt(insertConfig.relativeSrNo) || 1;
+                    resolvedIdx = Math.max(0, sr - 1);
+                  } else if (insertConfig.positionType === 'after') {
+                    const sr = parseInt(insertConfig.relativeSrNo) || 1;
+                    resolvedIdx = Math.min(data.length, sr);
+                  }
+
+                  onAddRow?.(newRowData, resolvedIdx);
+                  setSelectedIdxs([]); // Clear selection after addition
+                  setShowAddModal(false);
+                }}
+                style={{
+                  background: 'linear-gradient(135deg, var(--accent-cyan), var(--accent-purple))',
+                  border: 'none',
+                  borderRadius: 8, color: '#ffffff', fontSize: 12,
+                  padding: '8px 16px', cursor: 'pointer', fontWeight: 600,
+                  boxShadow: '0 2px 4px rgba(2,132,199,0.2)',
+                }}
+              >
+                Add Test Case
               </button>
             </div>
           </motion.div>
