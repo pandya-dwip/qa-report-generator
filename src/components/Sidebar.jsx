@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Upload, FileSpreadsheet, RotateCcw,
   ClipboardList, CheckCircle2, XCircle, Ban, CircleDashed,
-  TrendingUp, BarChart2,
+  TrendingUp, BarChart2, Trash2,
 } from 'lucide-react';
 import { computeStats } from '../services/chartService';
 
@@ -100,7 +100,17 @@ function CompactUpload({ onFile, isLoading }) {
   );
 }
 
-export default function Sidebar({ data, fileName, isLoading, onFile, onReset, activeHistoryId }) {
+export default function Sidebar({
+  data,
+  fileName,
+  isLoading,
+  onFile,
+  onReset,
+  activeHistoryId,
+  reports = [],
+  onSelectReport,
+  onDeleteReport,
+}) {
   const stats = data ? computeStats(data) : null;
   const passRate = stats ? parseFloat(stats.passRate) : 0;
   const totalForBar = stats ? stats.total : 1;
@@ -167,6 +177,160 @@ export default function Sidebar({ data, fileName, isLoading, onFile, onReset, ac
           <CompactUpload onFile={onFile} isLoading={isLoading} />
         )}
       </div>
+
+      {/* ── Saved Sheets ──────────────────────── */}
+      {!data && (
+        <div style={{
+          borderBottom: '1px solid var(--border)',
+          padding: '16px',
+          display: 'flex',
+          flexDirection: 'column',
+          minHeight: 0,
+          flex: '1 1 auto',
+        }}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 10,
+          }}>
+            <h3 style={{
+              fontSize: 11,
+              fontWeight: 600,
+              color: 'var(--text-secondary)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              fontFamily: 'DM Mono',
+            }}>
+              Saved Sheets ({reports.length})
+            </h3>
+          </div>
+          
+          <div style={{
+            flex: 1,
+            overflowY: 'auto',
+            marginRight: '-8px',
+            paddingRight: '8px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 6,
+          }}>
+            {reports.length > 0 ? (
+              reports.map(item => {
+                const isActive = item.id === activeHistoryId;
+                const formattedDate = new Date(item.timestamp).toLocaleString(undefined, {
+                  month: 'short',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                });
+                
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => onSelectReport(item)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '8px 10px',
+                      borderRadius: 'var(--r-md)',
+                      background: isActive ? 'var(--accent-cyan-dim)' : 'transparent',
+                      border: '1px solid',
+                      borderColor: isActive ? 'var(--accent-cyan)' : 'var(--border)',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s',
+                      position: 'relative',
+                      overflow: 'hidden',
+                    }}
+                    onMouseEnter={e => {
+                      if (!isActive) {
+                        e.currentTarget.style.background = 'var(--bg-secondary)';
+                        e.currentTarget.style.borderColor = 'var(--border-hover)';
+                      }
+                      const deleteBtn = e.currentTarget.querySelector('.delete-btn');
+                      if (deleteBtn) deleteBtn.style.opacity = '1';
+                    }}
+                    onMouseLeave={e => {
+                      if (!isActive) {
+                        e.currentTarget.style.background = 'transparent';
+                        e.currentTarget.style.borderColor = 'var(--border)';
+                      }
+                      const deleteBtn = e.currentTarget.querySelector('.delete-btn');
+                      if (deleteBtn) deleteBtn.style.opacity = '0';
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
+                      <div style={{
+                        width: 28, height: 28, borderRadius: 6, flexShrink: 0,
+                        background: isActive ? 'linear-gradient(135deg,#0ea5e9,#7c3aed)' : 'var(--bg-secondary)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        <FileSpreadsheet size={14} color={isActive ? '#ffffff' : 'var(--text-secondary)'} />
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{
+                          fontSize: 12,
+                          fontWeight: 600,
+                          color: isActive ? 'var(--accent-cyan)' : 'var(--text-primary)',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}>{item.fileName}</p>
+                        <p style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 1 }}>
+                          {item.data?.length || 0} cases · {formattedDate}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <button
+                      className="delete-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDeleteReport(item.id);
+                      }}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--text-muted)',
+                        padding: 4,
+                        borderRadius: 4,
+                        cursor: 'pointer',
+                        opacity: 0,
+                        transition: 'opacity 0.15s, color 0.15s, background-color 0.15s',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.color = 'var(--accent-red)';
+                        e.currentTarget.style.background = 'var(--accent-red-dim)';
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.color = 'var(--text-muted)';
+                        e.currentTarget.style.background = 'transparent';
+                      }}
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                );
+              })
+            ) : (
+              <div style={{
+                textAlign: 'center',
+                padding: '16px 0',
+                color: 'var(--text-muted)',
+                fontSize: 11.5,
+                border: '1.5px dashed var(--border)',
+                borderRadius: 'var(--r-md)',
+              }}>
+                No saved sheets in system
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── KPI Summary ───────────────────────── */}
       {stats && (
@@ -251,15 +415,13 @@ export default function Sidebar({ data, fileName, isLoading, onFile, onReset, ac
 
       {/* ── Empty state (no data) ─────────────── */}
       {!stats && (
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 10, opacity: 0.3 }}>
-              <BarChart2 size={36} strokeWidth={1.5} color="var(--text-secondary)" />
-            </div>
-            <p style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
-              Upload a sheet to<br />see your summary
-            </p>
+        <div style={{ flexShrink: 0, padding: '20px 16px', borderTop: '1px solid var(--border)', textAlign: 'center' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 6, opacity: 0.3 }}>
+            <BarChart2 size={24} strokeWidth={1.5} color="var(--text-secondary)" />
           </div>
+          <p style={{ fontSize: 11.5, color: 'var(--text-muted)', lineHeight: 1.4 }}>
+            Select a saved sheet or upload a new one to see summary analytics
+          </p>
         </div>
       )}
 

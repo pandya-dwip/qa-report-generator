@@ -221,6 +221,9 @@ export default function App() {
                 onFile={handleFile}
                 onReset={handleReset}
                 activeHistoryId={activeHistoryId}
+                reports={reports}
+                onSelectReport={handleEditHistoryItem}
+                onDeleteReport={handleDeleteHistoryItem}
               />
 
               {/* Main panel */}
