@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Upload, FileSpreadsheet, RotateCcw,
   ClipboardList, CheckCircle2, XCircle, Ban, CircleDashed,
-  TrendingUp, BarChart2, Trash2,
+  TrendingUp, BarChart2, Trash2, RefreshCw,
 } from 'lucide-react';
 import { computeStats } from '../services/chartService';
 
@@ -110,6 +110,8 @@ export default function Sidebar({
   reports = [],
   onSelectReport,
   onDeleteReport,
+  syncStatus = 'idle',
+  onSync,
 }) {
   const stats = data ? computeStats(data) : null;
   const passRate = stats ? parseFloat(stats.passRate) : 0;
@@ -157,6 +159,48 @@ export default function Sidebar({
                   {data.length} cases{activeHistoryId ? ' · Saved' : ''}
                 </p>
               </div>
+            </div>
+
+            {/* Sync status section */}
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '6px 12px', borderRadius: 'var(--r-md)',
+              background: syncStatus === 'error' ? 'rgba(239, 68, 68, 0.08)' : 'var(--bg-app)',
+              border: `1.5px solid ${syncStatus === 'error' ? 'var(--accent-red)' : 'var(--border)'}`,
+              marginBottom: 10, fontSize: 11.5,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <RefreshCw
+                  size={12}
+                  style={{
+                    animation: syncStatus === 'syncing' ? 'spin 1.5s linear infinite' : 'none',
+                    color: syncStatus === 'synced' ? '#10b981' : syncStatus === 'error' ? '#ef4444' : 'var(--text-muted)'
+                  }}
+                />
+                <span style={{
+                  color: syncStatus === 'synced' ? '#10b981' : syncStatus === 'error' ? '#ef4444' : 'var(--text-secondary)',
+                  fontWeight: 500
+                }}>
+                  {syncStatus === 'syncing' && 'Syncing...'}
+                  {syncStatus === 'synced' && 'Synced to Files/'}
+                  {syncStatus === 'error' && 'Sync failed'}
+                  {syncStatus === 'idle' && 'Not synced'}
+                </span>
+              </div>
+              {syncStatus !== 'syncing' && (
+                <button
+                  onClick={onSync}
+                  style={{
+                    background: 'transparent', border: 'none', color: 'var(--accent-cyan)',
+                    fontWeight: 600, fontSize: 11, cursor: 'pointer', padding: '2px 4px',
+                    borderRadius: 4, transition: 'background 0.15s'
+                  }}
+                  onMouseOver={e => e.currentTarget.style.background = 'var(--bg-secondary)'}
+                  onMouseOut={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  Sync Now
+                </button>
+              )}
             </div>
             <button
               onClick={onReset}

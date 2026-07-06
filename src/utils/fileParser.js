@@ -12,7 +12,9 @@ export async function parseFile(file) {
       try {
         const data = new Uint8Array(e.target.result);
         const wb = XLSX.read(data, { type: 'array', cellDates: true });
-        const wsName = wb.SheetNames[0];
+        // Check if any sheet name contains 'test cases' (case-insensitive)
+        const tcSheetName = wb.SheetNames.find(name => name.toLowerCase().includes('test cases'));
+        const wsName = tcSheetName || wb.SheetNames[0];
         const ws = wb.Sheets[wsName];
         const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
 

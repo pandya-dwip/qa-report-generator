@@ -2,7 +2,8 @@ import { REQUIRED_COLUMNS } from '../constants';
 
 export function validateColumns(headers) {
   const normalized = headers.map(h => h?.toString().trim());
-  const missing = REQUIRED_COLUMNS.filter(
+  const CRITICAL = ['Test Case ID', 'Status'];
+  const missing = CRITICAL.filter(
     req => !normalized.some(h => h.toLowerCase() === req.toLowerCase())
   );
   return { valid: missing.length === 0, missing };

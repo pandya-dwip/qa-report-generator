@@ -14,21 +14,49 @@ import { useToast } from './hooks/useToast';
 import { saveReport, getAllReports, updateReport, deleteReport, renameReport } from './utils/historyDb';
 
 export default function App() {
-  const [activeTab, setActiveTab]           = useState('generator');
-  const [data, setData]                     = useState(null);
-  const [fileName, setFileName]             = useState('');
-  const [isLoading, setIsLoading]           = useState(false);
+  const [activeTab, setActiveTab] = useState('generator');
+  const [data, setData] = useState(null);
+  const [fileName, setFileName] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [validationError, setValidationError] = useState(null);
   const [activeHistoryId, setActiveHistoryId] = useState(null);
-  const [reports, setReports]               = useState([]);
-  const [exportState, setExportState]       = useState('idle'); // 'idle' | 'loading' | 'done'
-  const { toasts, addToast, removeToast }   = useToast();
+  const [reports, setReports] = useState([]);
+  const [exportState, setExportState] = useState('idle'); // 'idle' | 'loading' | 'done'
+  const [syncStatus, setSyncStatus] = useState('idle'); // 'idle' | 'syncing' | 'synced' | 'error'
+  const { toasts, addToast, removeToast } = useToast();
 
   const fetchReports = useCallback(async () => {
     try { setReports(await getAllReports()); } catch (err) { console.error(err); }
   }, []);
 
-  useEffect(() => { fetchReports(); }, [fetchReports]);
+  const syncData = useCallback(async (name, dataToSync) => {
+    if (!dataToSync || !name) return;
+    setSyncStatus('syncing');
+    try {
+      const { syncFileToServer } = await import('./utils/fileSync');
+      await syncFileToServer(name, dataToSync);
+      setSyncStatus('synced');
+    } catch (err) {
+      console.error('Local sync failed:', err);
+      setSyncStatus('error');
+      addToast('Failed to sync to Files folder: ' + err.message, 'error');
+    }
+  }, [addToast]);
+
+  useEffect(() => {
+    fetchReports();
+  }, [fetchReports]);
+
+  useEffect(() => {
+    if (data && fileName) {
+      const timer = setTimeout(() => {
+        syncData(fileName, data);
+      }, 500);
+      return () => clearTimeout(timer);
+    } else {
+      setSyncStatus('idle');
+    }
+  }, [data, fileName, syncData]);
 
   /* ── File load ──────────────────────────────── */
   const handleFile = useCallback(async (file) => {
@@ -152,8 +180,8 @@ export default function App() {
     }
   }, [data, fileName, exportState, addToast]);
 
-  const handleExcelExport   = useCallback(() => doExport(false), [doExport]);
-  const handleGSheetsExport = useCallback(() => doExport(true),  [doExport]);
+  const handleExcelExport = useCallback(() => doExport(false), [doExport]);
+  const handleGSheetsExport = useCallback(() => doExport(true), [doExport]);
 
   const handleGSheetsTCExport = useCallback(async () => {
     if (!data?.length || exportState === 'loading') return;
@@ -239,6 +267,8 @@ export default function App() {
                 reports={reports}
                 onSelectReport={handleEditHistoryItem}
                 onDeleteReport={handleDeleteHistoryItem}
+                syncStatus={syncStatus}
+                onSync={() => syncData(fileName, data)}
               />
 
               {/* Main panel */}
@@ -309,8 +339,8 @@ export default function App() {
                     <div style={{ display: 'flex', gap: 20, marginTop: 8 }}>
                       {[
                         { icon: <BarChart2 size={22} strokeWidth={1.5} color="var(--accent-cyan)" />, label: 'Smart Dashboard' },
-                      { icon: <Pencil size={22} strokeWidth={1.5} color="var(--accent-purple)" />, label: 'Inline Editing' },
-                      { icon: <Download size={22} strokeWidth={1.5} color="var(--accent-green)" />, label: 'Excel & Sheets Export' },
+                        { icon: <Pencil size={22} strokeWidth={1.5} color="var(--accent-purple)" />, label: 'Inline Editing' },
+                        { icon: <Download size={22} strokeWidth={1.5} color="var(--accent-green)" />, label: 'Excel & Sheets Export' },
                       ].map(f => (
                         <div key={f.label} style={{
                           padding: '10px 16px', borderRadius: 'var(--r-md)',
