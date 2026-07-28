@@ -189,6 +189,62 @@ function PlusIcon({ size = 16, color = 'currentColor' }) {
   return <Plus size={size} color={color} strokeWidth={2} />;
 }
 
+const BULK_FIELD_OPTIONS = {
+  Status: ['PASS', 'FAIL', 'BLOCKED', 'NOT EXECUTED'],
+  Severity: ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'],
+  Priority: ['HIGH', 'MEDIUM', 'LOW'],
+};
+const BULK_LONG_TEXT_FIELDS = [
+  'Test Scenario', 'Simplified Test Scenario', 'Test Steps',
+  'Expected Result', 'Actual Result', 'QA Comments',
+];
+const bulkInputStyle = {
+  background: 'var(--bg-secondary)', border: '1px solid var(--accent-cyan)',
+  borderRadius: 8, color: 'var(--text-primary)', fontSize: 12,
+  padding: '7px 12px', outline: 'none', fontWeight: 500,
+};
+
+// Renders the value input for the bulk-edit field currently selected.
+function BulkValueInput({ field, value, onChange }) {
+  if (!field) return null;
+  if (BULK_FIELD_OPTIONS[field]) {
+    return (
+      <select value={value} onChange={(e) => onChange(e.target.value)} style={{ ...bulkInputStyle, cursor: 'pointer' }}>
+        {BULK_FIELD_OPTIONS[field].map(opt => <option key={opt} value={opt}>{opt}</option>)}
+      </select>
+    );
+  }
+  if (field === 'Execution Date') {
+    return <input type="date" value={value} onChange={(e) => onChange(e.target.value)} style={{ ...bulkInputStyle, cursor: 'pointer' }} />;
+  }
+  if (BULK_LONG_TEXT_FIELDS.includes(field)) {
+    return (
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={`New ${field}...`}
+        rows={1}
+        style={{ ...bulkInputStyle, width: 220, resize: 'vertical', fontFamily: 'inherit' }}
+      />
+    );
+  }
+  return (
+    <input
+      type="text"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={`New ${field}...`}
+      style={{ ...bulkInputStyle, width: 180 }}
+    />
+  );
+}
+
+function defaultBulkValue(field) {
+  if (BULK_FIELD_OPTIONS[field]) return BULK_FIELD_OPTIONS[field][0];
+  if (field === 'Execution Date') return new Date().toISOString().slice(0, 10);
+  return '';
+}
+
 export default function FilePreview({ data, fileName, onUpdateRow, onUpdateRowsBulk, onDeleteRow, onDeleteRowsBulk, onAddRow, onMergeFile }) {
   const [search, setSearch] = useState('');
   const [pageSize, setPageSize] = useState(PAGE_SIZE);
@@ -197,6 +253,9 @@ export default function FilePreview({ data, fileName, onUpdateRow, onUpdateRowsB
   const [sortDir, setSortDir] = useState('asc');
   const [statusFilter, setStatusFilter] = useState('');
   const [selectedIdxs, setSelectedIdxs] = useState([]);
+  const [bulkField, setBulkField] = useState('');
+  const [bulkValue, setBulkValue] = useState('');
+  const BULK_EDITABLE_FIELDS = useMemo(() => REQUIRED_COLUMNS.filter(c => c !== 'Sr No' && c !== 'Test Case ID'), []);
   const selectedRow = useMemo(() => {
     return selectedIdxs.length === 1 ? data[selectedIdxs[0]] : null;
   }, [selectedIdxs, data]);
@@ -230,6 +289,8 @@ export default function FilePreview({ data, fileName, onUpdateRow, onUpdateRowsB
 
   useEffect(() => {
     setSelectedIdxs([]);
+    setBulkField('');
+    setBulkValue('');
   }, [search, statusFilter, page, pageSize, data]);
 
   const filtered = useMemo(() => {
@@ -307,7 +368,7 @@ export default function FilePreview({ data, fileName, onUpdateRow, onUpdateRowsB
                   <Zap size={12} strokeWidth={2.5} /> {selectedIdxs.length} row{selectedIdxs.length > 1 ? 's' : ''} selected
                 </span>
                 <button
-                  onClick={() => setSelectedIdxs([])}
+                  onClick={() => { setSelectedIdxs([]); setBulkField(''); setBulkValue(''); }}
                   style={{
                     background: 'transparent', border: 'none', color: 'var(--text-muted)',
                     fontSize: 11, cursor: 'pointer', textDecoration: 'underline', padding: 0,
@@ -372,32 +433,48 @@ export default function FilePreview({ data, fileName, onUpdateRow, onUpdateRowsB
                   <PlusIcon size={14} color="#fff" /> Add Test Case
                 </button>
               )}
-              <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600 }}>Bulk Status:</span>
+              <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600 }}>Bulk Edit:</span>
               <select
-                value=""
+                value={bulkField}
                 onChange={(e) => {
-                  const val = e.target.value;
-                  if (!val) return;
-                  const updates = selectedIdxs.map(idx => ({
-                    index: idx,
-                    updatedRow: { ...data[idx], Status: val }
-                  }));
-                  onUpdateRowsBulk?.(updates);
-                  setSelectedIdxs([]);
+                  const field = e.target.value;
+                  setBulkField(field);
+                  setBulkValue(defaultBulkValue(field));
                 }}
                 style={{
-                  background: 'var(--bg-secondary)', border: '1px solid var(--accent-cyan)',
+                  background: 'var(--bg-secondary)', border: '1px solid var(--border)',
                   borderRadius: 8, color: 'var(--text-primary)', fontSize: 12,
                   padding: '7px 12px', outline: 'none', cursor: 'pointer',
-                  fontWeight: 600
+                  fontWeight: 600,
                 }}
               >
-                <option value="" disabled>Apply status to selected...</option>
-                <option value="PASS">PASS</option>
-                <option value="FAIL">FAIL</option>
-                <option value="BLOCKED">BLOCKED</option>
-                <option value="NOT EXECUTED">NOT EXECUTED</option>
+                <option value="" disabled>Select field...</option>
+                {BULK_EDITABLE_FIELDS.map(f => <option key={f} value={f}>{f}</option>)}
               </select>
+
+              <BulkValueInput field={bulkField} value={bulkValue} onChange={setBulkValue} />
+
+              {bulkField && (
+                <button
+                  onClick={() => {
+                    const updates = selectedIdxs.map(idx => ({
+                      index: idx,
+                      updatedRow: { ...data[idx], [bulkField]: bulkValue }
+                    }));
+                    onUpdateRowsBulk?.(updates);
+                    setSelectedIdxs([]);
+                    setBulkField('');
+                    setBulkValue('');
+                  }}
+                  style={{
+                    background: 'linear-gradient(135deg, var(--accent-cyan), var(--accent-purple))',
+                    border: 'none', borderRadius: 8, color: '#fff', fontSize: 12,
+                    padding: '7px 14px', cursor: 'pointer', fontWeight: 600,
+                  }}
+                >
+                  Apply
+                </button>
+              )}
 
               <button
                 onClick={() => {

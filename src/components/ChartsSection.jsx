@@ -49,7 +49,14 @@ const BAR_OPTIONS = {
   ...BASE_OPTIONS,
   scales: {
     x: {
-      ticks: { color: '#64748b', font: { family: 'DM Mono, monospace', size: 9.5 } },
+      ticks: {
+        color: '#64748b', font: { family: 'DM Mono, monospace', size: 9.5 },
+        autoSkip: true, maxRotation: 0, minRotation: 0,
+        callback(value) {
+          const label = this.getLabelForValue(value);
+          return label.length > 16 ? label.slice(0, 14) + '…' : label;
+        },
+      },
       grid: { color: 'rgba(226,232,240,0.6)', drawBorder: false },
     },
     y: {
@@ -151,7 +158,7 @@ export default function ChartsSection({ data }) {
             {/* Row 1: 3 circular charts */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: '1fr 1fr 1fr',
+              gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
               gap: 10, marginBottom: 10,
             }}>
               <ChartCard title="Status Distribution" style={{ height: CHART_H + 60 }}>
@@ -168,7 +175,7 @@ export default function ChartsSection({ data }) {
             {/* Row 2: bar + trend side by side */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: hasTrend ? '1fr 1fr' : '1fr',
+              gridTemplateColumns: hasTrend ? 'repeat(2, minmax(0, 1fr))' : '1fr',
               gap: 10,
             }}>
               <ChartCard title="Module-wise Execution" style={{ height: CHART_H + 54 }}>
