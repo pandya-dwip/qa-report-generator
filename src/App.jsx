@@ -197,9 +197,12 @@ export default function App() {
     }
   }, [data, fileName, exportState, addToast]);
 
-  /* ── History item actions ───────────────────── */
   const handleEditHistoryItem = useCallback((item) => {
-    setData(item.data); setFileName(item.fileName);
+    const upgradedData = item.data.map(row => ({
+      ...row,
+      'Testing Method': row['Testing Method'] || 'Manual'
+    }));
+    setData(upgradedData); setFileName(item.fileName);
     setActiveHistoryId(item.id); setActiveTab('generator');
     addToast(`Loaded "${item.fileName}" for editing.`, 'info');
   }, [addToast]);

@@ -12,6 +12,7 @@ function getColWidth(col) {
     'Module': 140,
     'Test Case ID': 130,
     'Test Type': 120,
+    'Testing Method': 120,
     'Test Scenario': 260,
     'Simplified Test Scenario': 220,
     'Test Steps': 280,
@@ -266,6 +267,7 @@ export default function FilePreview({ data, fileName, onUpdateRow, onUpdateRowsB
     Module: '',
     'Test Case ID': '',
     'Test Type': 'Functional',
+    'Testing Method': 'Manual',
     'Test Scenario': '',
     'Simplified Test Scenario': '',
     'Test Steps': '',
@@ -281,7 +283,7 @@ export default function FilePreview({ data, fileName, onUpdateRow, onUpdateRowsB
     'QA Comments': '',
   });
 
-  const DEFAULT_HIDDEN = useMemo(() => ['Test Type', 'Test Case ID', 'Test Steps', 'Priority', 'Severity'], []);
+  const DEFAULT_HIDDEN = useMemo(() => ['Test Type', 'Testing Method', 'Test Case ID', 'Test Steps', 'Priority', 'Severity'], []);
   const [visibleCols, setVisibleCols] = useState(() => {
     return REQUIRED_COLUMNS.filter(col => !DEFAULT_HIDDEN.includes(col));
   });
@@ -980,6 +982,18 @@ export default function FilePreview({ data, fileName, onUpdateRow, onUpdateRowsB
                     type="text"
                     value={newRowData['Tested By']}
                     onChange={(e) => setNewRowData({ ...newRowData, 'Tested By': e.target.value })}
+                    style={{ width: '100%', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-primary)', fontSize: 13, padding: '8px 12px', outline: 'none' }}
+                  />
+                </div>
+
+                {/* Testing Method */}
+                <div style={{ gridColumn: 'span 2' }}>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>Testing Method</label>
+                  <input
+                    type="text"
+                    value={newRowData['Testing Method']}
+                    onChange={(e) => setNewRowData({ ...newRowData, 'Testing Method': e.target.value })}
+                    placeholder="e.g. Manual"
                     style={{ width: '100%', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-primary)', fontSize: 13, padding: '8px 12px', outline: 'none' }}
                   />
                 </div>

@@ -17,11 +17,11 @@ function isValidFile(file) {
 }
 
 const KPI_ROWS = [
-  { key: 'total',   label: 'Total Cases',  accent: '#0284c7', Icon: ClipboardList },
-  { key: 'pass',    label: 'Passed',       accent: '#059669', Icon: CheckCircle2  },
-  { key: 'fail',    label: 'Failed',       accent: '#dc2626', Icon: XCircle       },
-  { key: 'blocked', label: 'Blocked',      accent: '#ea580c', Icon: Ban           },
-  { key: 'notExec', label: 'Not Executed', accent: '#94a3b8', Icon: CircleDashed  },
+  { key: 'total', label: 'Total Cases', accent: '#0284c7', Icon: ClipboardList },
+  { key: 'pass', label: 'Passed', accent: '#059669', Icon: CheckCircle2 },
+  { key: 'fail', label: 'Failed', accent: '#dc2626', Icon: XCircle },
+  { key: 'blocked', label: 'Blocked', accent: '#ea580c', Icon: Ban },
+  { key: 'notExec', label: 'Not Executed', accent: '#94a3b8', Icon: CircleDashed },
 ];
 
 function CompactUpload({ onFile, isLoading }) {
@@ -61,7 +61,7 @@ function CompactUpload({ onFile, isLoading }) {
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
                 style={{ animation: 'spin 1s linear infinite' }}>
-                <path d="M21 12a9 9 0 11-6.219-8.56"/>
+                <path d="M21 12a9 9 0 11-6.219-8.56" />
               </svg>
             </div>
             <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>Parsing…</p>
@@ -153,7 +153,8 @@ export default function Sidebar({
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{
                   fontSize: 12.5, fontWeight: 600, color: 'var(--text-primary)',
-                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  wordBreak: 'break-word',
+                  lineHeight: '1.3',
                 }}>{fileName}</p>
                 <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>
                   {data.length} cases{activeHistoryId ? ' · Saved' : ''}
@@ -249,7 +250,7 @@ export default function Sidebar({
               Saved Sheets ({reports.length})
             </h3>
           </div>
-          
+
           <div style={{
             flex: 1,
             overflowY: 'auto',
@@ -268,7 +269,7 @@ export default function Sidebar({
                   hour: '2-digit',
                   minute: '2-digit',
                 });
-                
+
                 return (
                   <div
                     key={item.id}
@@ -286,6 +287,7 @@ export default function Sidebar({
                       transition: 'all 0.15s',
                       position: 'relative',
                       overflow: 'hidden',
+                      flexShrink: 0,
                     }}
                     onMouseEnter={e => {
                       if (!isActive) {
@@ -317,16 +319,15 @@ export default function Sidebar({
                           fontSize: 12,
                           fontWeight: 600,
                           color: isActive ? 'var(--accent-cyan)' : 'var(--text-primary)',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
+                          wordBreak: 'break-word',
+                          lineHeight: '1.3',
                         }}>{item.fileName}</p>
                         <p style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 1 }}>
                           {item.data?.length || 0} cases · {formattedDate}
                         </p>
                       </div>
                     </div>
-                    
+
                     <button
                       className="delete-btn"
                       onClick={(e) => {

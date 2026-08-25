@@ -413,11 +413,10 @@ function buildTestCaseSheet(wb, data, isGoogleSheets) {
   const ws = wb.addWorksheet('🧪 Test Cases', {
     views: [{ state: 'frozen', ySplit: 1, showGridLines: false }],
   });
-
   // Column widths
   const colWidths = isGoogleSheets
-    ? [10, 22, 22, 18, 48, 42, 54, 48, 48, 15, 17, 17, 22, 20, 22, 22, 42]
-    : [8, 18, 18, 15, 40, 35, 45, 40, 40, 12, 14, 14, 18, 16, 18, 18, 35];
+    ? [10, 22, 22, 18, 18, 48, 42, 54, 48, 48, 15, 17, 17, 22, 20, 22, 22, 42]
+    : [8, 18, 18, 15, 15, 40, 35, 45, 40, 40, 12, 14, 14, 18, 16, 18, 18, 35];
   REQUIRED_COLUMNS.forEach((_, i) => {
     ws.getColumn(i + 1).width = colWidths[i] || 18;
   });

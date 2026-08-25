@@ -129,3 +129,10 @@ export function parseDateToYYYYMMDD(dateVal) {
   return str;
 }
 
+export function normalizeTestingMethod(method) {
+  if (!method) return 'Manual';
+  const m = method.toString().trim().toLowerCase();
+  if (m === 'automated' || m === 'automation') return 'Automated';
+  return 'Manual';
+}
+

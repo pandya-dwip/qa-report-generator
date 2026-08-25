@@ -1,7 +1,7 @@
 import * as XLSX from 'xlsx';
 import {
   validateColumns, normalizeHeaders, normalizeStatus, normalizeSeverity,
-  normalizePriority, parseDateToYYYYMMDD
+  normalizePriority, parseDateToYYYYMMDD, normalizeTestingMethod
 } from '../services/validationService';
 import { REQUIRED_COLUMNS } from '../constants';
 
@@ -54,6 +54,7 @@ export async function parseFile(file) {
           obj['Status'] = normalizeStatus(obj['Status']);
           obj['Severity'] = normalizeSeverity(obj['Severity']);
           obj['Priority'] = normalizePriority(obj['Priority']);
+          obj['Testing Method'] = normalizeTestingMethod(obj['Testing Method']);
 
           // Default Tested By
           if (!obj['Tested By']) {

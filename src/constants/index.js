@@ -1,5 +1,5 @@
 export const REQUIRED_COLUMNS = [
-  'Sr No', 'Module', 'Test Case ID', 'Test Type', 'Test Scenario',
+  'Sr No', 'Module', 'Test Case ID', 'Test Type', 'Testing Method', 'Test Scenario',
   'Simplified Test Scenario', 'Test Steps', 'Expected Result', 'Actual Result',
   'Priority', 'Severity', 'Status', 'Tested By', 'Execution Date',
   'Defect No. / Bug No.', 'Defect ID', 'QA Comments'

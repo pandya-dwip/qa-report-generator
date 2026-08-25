@@ -30,10 +30,16 @@ All data is persisted locally in the browser via IndexedDB, meaning reports surv
 
 ### File Upload & Parsing
 - Drag-and-drop or click-to-select `.xlsx`, `.xls`, and `.csv` files
-- Validates all 17 required columns on upload with a clear, actionable error panel
-- Auto-normalizes `Status`, `Severity`, and `Priority` values (case-insensitive)
+- **Flexible Sheet Detection** — automatically checks for a sheet named `"Test Cases"` (e.g. system exports) and reads it, instead of failing on the dashboard page
+- **Relaxed Validation** — only **`Test Case ID`** and **`Status`** are strictly required; missing optional columns are filled with default values on import
+- Auto-normalizes `Status`, `Severity`, `Priority`, and `Testing Method` values (case-insensitive)
 - Parses dates in multiple formats: `YYYY-MM-DD`, `DD-MM-YYYY`, ISO 8601, and Excel serial numbers
 - Merges uploaded files by unique `Test Case ID` — overwrites existing rows and appends new ones
+
+### Local Files Sync (Dev Mode)
+- Automatically creates a `Files/` folder in the project root (gitignored)
+- Auto-syncs your current test cases to `Files/[fileName].csv` whenever you load a file, edit cells, add rows, or delete test cases (debounced at 500ms)
+- Provides a manual **Sync Now** button in the sidebar to force synchronization at any time
 
 ### Inline Data Editing
 - Edit any cell directly in the table — textareas auto-resize for long content
@@ -167,27 +173,28 @@ Switch to the **History** tab to browse all previously saved reports. Reports ar
 
 ## Required File Format
 
-Uploaded files must contain all 17 of the following columns. Column order does not matter; header names are matched case-insensitively.
+Uploaded files support up to 18 columns. Only **`Test Case ID`** and **`Status`** are strictly required for validation to succeed; all other columns are optional and default to sensible values. Column order does not matter, and headers are matched case-insensitively.
 
-| Column | Description |
-|--------|-------------|
-| `Sr No` | Serial number — auto-managed by the app |
-| `Module` | Feature or functional area under test |
-| `Test Case ID` | Unique identifier for the test case |
-| `Test Type` | e.g. Functional, Security, Regression, Performance |
-| `Test Scenario` | Full description of the test scenario |
-| `Simplified Test Scenario` | Short summary of the scenario |
-| `Test Steps` | Step-by-step execution instructions |
-| `Expected Result` | The expected system behavior |
-| `Actual Result` | The observed system behavior |
-| `Priority` | `HIGH`, `MEDIUM`, or `LOW` |
-| `Severity` | `CRITICAL`, `HIGH`, `MEDIUM`, or `LOW` |
-| `Status` | `PASS`, `FAIL`, `BLOCKED`, or `NOT EXECUTED` |
-| `Tested By` | Name of the QA engineer |
-| `Execution Date` | Date the test was run (`YYYY-MM-DD` recommended) |
-| `Defect No. / Bug No.` | Legacy defect reference field |
-| `Defect ID` | Bug tracker ID (rendered as a hyperlink in Excel exports) |
-| `QA Comments` | Additional notes or observations |
+| Column | Required | Description |
+|--------|:---:|-------------|
+| `Sr No` | No | Serial number — auto-managed by the app |
+| `Module` | No | Feature or functional area under test |
+| `Test Case ID` | **Yes** | Unique identifier for the test case |
+| `Test Type` | No | e.g. Functional, Security, Regression, Performance |
+| `Testing Method` | No | e.g. `Manual` or `Automated` (defaults to `Manual`) |
+| `Test Scenario` | No | Full description of the test scenario |
+| `Simplified Test Scenario` | No | Short summary of the scenario |
+| `Test Steps` | No | Step-by-step execution instructions |
+| `Expected Result` | No | The expected system behavior |
+| `Actual Result` | No | The observed system behavior |
+| `Priority` | No | `HIGH`, `MEDIUM`, or `LOW` (defaults to `MEDIUM`) |
+| `Severity` | No | `CRITICAL`, `HIGH`, `MEDIUM`, or `LOW` (defaults to `MEDIUM`) |
+| `Status` | **Yes** | `PASS`, `FAIL`, `BLOCKED`, or `NOT EXECUTED` |
+| `Tested By` | No | Name of the QA engineer (defaults to `Dwip Pandya`) |
+| `Execution Date` | No | Date the test was run (defaults to current date) |
+| `Defect No. / Bug No.` | No | Legacy defect reference field |
+| `Defect ID` | No | Bug tracker ID (rendered as a hyperlink in Excel exports) |
+| `QA Comments` | No | Additional notes or observations |
 
 A sample file demonstrating this format is included at [sample_qa_cases.csv](sample_qa_cases.csv).
 
@@ -201,7 +208,7 @@ A sample file demonstrating this format is included at [sample_qa_cases.csv](sam
 |-------|---------|
 | **Dashboard** | KPI cards with live `COUNTIF` formulas, module-wise breakdown table, severity and priority summary grid |
 | **Project Details** | Editable project metadata (name, build version, environment, test cycle, dates, remarks) with an auto-calculated execution summary |
-| **Test Cases** | Full 17-column dataset with frozen headers, auto-filters, and conditional cell formatting for `Status`, `Severity`, and `Priority` |
+| **Test Cases** | Full 18-column dataset with frozen headers, auto-filters, and conditional cell formatting for `Status`, `Severity`, and `Priority` |
 | **Summary** | Module-wise execution totals with pass percentage column and a formatted totals row |
 
 Additional Excel features: merged title cells, Arial font throughout, optimized column widths, percentage number formatting (`0.0%`), alternating row shading in the Summary sheet, and `HYPERLINK` formulas on all `Defect ID` values.
@@ -237,6 +244,7 @@ qa-report-generator/
 │   │   └── validationService.js # Column validation and field normalization
 │   ├── utils/
 │   │   ├── fileParser.js        # XLSX/CSV reader, header normalization, data mapping
+│   │   ├── fileSync.js          # CSV serializer and filesystem sync API interface
 │   │   └── historyDb.js         # IndexedDB CRUD operations
 │   ├── hooks/
 │   │   └── useToast.js          # Toast notification state hook
@@ -263,6 +271,7 @@ qa-report-generator/
 | `Status` | `NOT EXECUTED` |
 | `Priority` | `MEDIUM` |
 | `Severity` | `MEDIUM` |
+| `Testing Method` | `Manual` |
 | `Execution Date` | Current date |
 | `Tested By` | `Dwip Pandya` |
 
@@ -289,7 +298,3 @@ The app targets modern evergreen browsers. The following APIs are required:
 **Not supported:** Internet Explorer
 
 ---
-
-## License
-
-This project is licensed under the MIT License.
