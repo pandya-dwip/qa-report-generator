@@ -107,7 +107,7 @@ function buildDashboardSheet(wb, data, isGoogleSheets) {
   // Spacer
   ws.getRow(4).height = 10;
 
-  const testCasesRange = `'🧪 Test Cases'!$L$2:$L${data.length + 1}`;
+  const testCasesRange = `'🧪 Test Cases'!$M$2:$M${data.length + 1}`;
   const totalRowsRange = `'🧪 Test Cases'!$A$2:$A${data.length + 1}`;
 
   // KPI Cards ─ row 5-9
@@ -201,7 +201,7 @@ function buildDashboardSheet(wb, data, isGoogleSheets) {
   });
 
   const modulesRange = `'🧪 Test Cases'!$B$2:$B${data.length + 1}`;
-  const statusesRange = `'🧪 Test Cases'!$L$2:$L${data.length + 1}`;
+  const statusesRange = `'🧪 Test Cases'!$M$2:$M${data.length + 1}`;
 
   let rowIdx = 13;
   Object.entries(moduleMap).forEach(([mod, m], i) => {
@@ -252,8 +252,8 @@ function buildDashboardSheet(wb, data, isGoogleSheets) {
     cell.border = { bottom: { style: 'thin', color: hex('CBD5E1') } };
   });
 
-  const severityRange = `'🧪 Test Cases'!$K$2:$K${data.length + 1}`;
-  const priorityRange = `'🧪 Test Cases'!$J$2:$J${data.length + 1}`;
+  const severityRange = `'🧪 Test Cases'!$L$2:$L${data.length + 1}`;
+  const priorityRange = `'🧪 Test Cases'!$K$2:$K${data.length + 1}`;
 
   const sevRows = [
     ['CRITICAL', { formula: `COUNTIF(${severityRange}, J13)` }, '', 'HIGH', { formula: `COUNTIF(${priorityRange}, M13)` }],
@@ -366,7 +366,7 @@ function buildProjectSheet(wb, data, isGoogleSheets) {
   sc.fill = fill('F1F5F9');
   ws.getRow(15).height = 24;
 
-  const testCasesRange = `'🧪 Test Cases'!$L$2:$L${data.length + 1}`;
+  const testCasesRange = `'🧪 Test Cases'!$M$2:$M${data.length + 1}`;
   const totalRowsRange = `'🧪 Test Cases'!$A$2:$A${data.length + 1}`;
 
   const summaryRows = [
@@ -540,7 +540,7 @@ function buildSummarySheet(wb, data, isGoogleSheets) {
   });
 
   const modulesRange = `'🧪 Test Cases'!$B$2:$B${data.length + 1}`;
-  const statusesRange = `'🧪 Test Cases'!$L$2:$L${data.length + 1}`;
+  const statusesRange = `'🧪 Test Cases'!$M$2:$M${data.length + 1}`;
 
   let ri = 5;
   Object.entries(moduleMap).forEach(([mod, m], i) => {
