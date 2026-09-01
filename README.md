@@ -1,6 +1,21 @@
+<div align="center">
+
 # QA Report Generator
 
-> A professional, fully client-side QA test case management and reporting tool — upload, edit, analyze, and export test case data with zero backend required.
+**A professional, fully client-side QA test case management and reporting tool**
+
+![Version](https://img.shields.io/badge/version-2.0.0-informational?style=flat-square)
+![Platform](https://img.shields.io/badge/platform-Web%20App-4285F4?style=flat-square&logo=googlechrome&logoColor=white)
+![React](https://img.shields.io/badge/framework-React%2019-61DAFB?style=flat-square&logo=react&logoColor=black)
+![Vite](https://img.shields.io/badge/build-Vite-646CFF?style=flat-square&logo=vite&logoColor=white)
+![Tailwind](https://img.shields.io/badge/styling-Tailwind%20CSS-38B2AC?style=flat-square&logo=tailwindcss&logoColor=white)
+![Storage](https://img.shields.io/badge/storage-IndexedDB%20(Local)-blueviolet?style=flat-square)
+![Excel](https://img.shields.io/badge/export-ExcelJS%20%2F%20XLSX-217346?style=flat-square&logo=microsoftexcel&logoColor=white)
+![Theme](https://img.shields.io/badge/theme-light%20%2F%20dark-333333?style=flat-square)
+
+Upload, edit, analyze, and export test case data — entirely in your browser, with zero backend required.
+
+</div>
 
 ---
 
